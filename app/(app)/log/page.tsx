@@ -4,7 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { SubstanceType } from '@/types';
+import type { SubstanceType, Batch } from '@/types';
 import {
   DOSE_RANGES,
   validateDose,
@@ -36,12 +36,39 @@ function LogPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<DoseWarning | null>(null);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [loadingBatches, setLoadingBatches] = useState(true);
 
-  // Auto-reset amount when switching substances
+  // Fetch batches on mount
+  useEffect(() => {
+    const fetchBatches = async () => {
+      const response = await fetch('/api/batches');
+      const data = await response.json();
+      if (data.batches) {
+        setBatches(data.batches);
+        // Auto-select active batch for current substance
+        const activeBatch = data.batches.find(
+          (b: Batch) => b.is_active && b.substance_type === substance
+        );
+        if (activeBatch) {
+          setBatchId(activeBatch.id);
+        }
+      }
+      setLoadingBatches(false);
+    };
+    fetchBatches();
+  }, []);
+
+  // Auto-reset amount and select appropriate batch when switching substances
   useEffect(() => {
     setAmount('');
     setWarning(null);
-  }, [substance]);
+    // Select active batch for new substance
+    const activeBatch = batches.find(
+      (b) => b.is_active && b.substance_type === substance
+    );
+    setBatchId(activeBatch?.id || '');
+  }, [substance, batches]);
 
   // Get current dose range for the selected substance
   const doseRange = DOSE_RANGES[substance as Substance];
@@ -331,18 +358,39 @@ function LogPageContent() {
           </p>
         </div>
 
-        {/* Batch (optional) */}
+        {/* Batch Selector */}
         <div>
-          <label className="block font-mono text-sm uppercase tracking-wide text-ivory/60 mb-2">
-            Batch ID <span className="text-ivory/40">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={batchId}
-            onChange={(e) => setBatchId(e.target.value)}
-            className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-orange"
-            placeholder="e.g., APE-001"
-          />
+          <div className="flex justify-between items-center mb-2">
+            <label className="font-mono text-sm uppercase tracking-wide text-ivory/60">
+              Batch
+            </label>
+            <Link href="/batch" className="text-orange text-xs hover:underline">
+              + New Batch
+            </Link>
+          </div>
+          {loadingBatches ? (
+            <div className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory/50">
+              Loading batches...
+            </div>
+          ) : (
+            <select
+              value={batchId}
+              onChange={(e) => setBatchId(e.target.value)}
+              className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory focus:outline-none focus:border-orange"
+            >
+              <option value="">No batch selected</option>
+              {batches
+                .filter((b) => b.substance_type === substance && !b.archived_at)
+                .map((batch) => (
+                  <option key={batch.id} value={batch.id}>
+                    {batch.name} {batch.is_active ? '(Active)' : ''}
+                  </option>
+                ))}
+            </select>
+          )}
+          <p className="text-ivory/40 text-xs mt-1">
+            Batches track potency across doses from the same source
+          </p>
         </div>
 
         {/* Food State */}

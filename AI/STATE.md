@@ -1,13 +1,13 @@
 # Threshold Compass — Development State
 
-> Updated: 2025-12-25 @ 00:15
+> Updated: 2025-12-25 @ 00:45
 
 ---
 
 ## Current Phase
 
-**Phase:** Phase 4 - Safety & Infrastructure
-**Status:** Dose validation complete, PWA and deployment pending
+**Phase:** Phase 5 - Polish & Deployment
+**Status:** Core features complete, ready for PWA + Vercel deployment
 
 ---
 
@@ -30,6 +30,7 @@
 - [x] Context tags (work/creative/social/physical/rest)
 - [x] GitHub repo created: taylorsterlingwrites/threshold-compass
 - [x] **Dose validation system (P0 safety)** - substance-specific ranges, warning modals
+- [x] **Batch management** - /batch page, API routes, log page selector
 - [ ] PWA configured
 - [ ] Deployed to Vercel
 
@@ -100,6 +101,8 @@
 | `/onboarding` | ✓ | 3-step intro |
 | `/api/doses` | ✓ | POST/GET dose logs with carryover calc |
 | `/api/check-ins` | ✓ | POST/GET check-ins |
+| `/batch` | ✓ | Batch management (create, activate, archive) |
+| `/api/batches` | ✓ | Full CRUD for batch tracking |
 
 ---
 

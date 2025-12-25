@@ -1,0 +1,211 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-12-24",
+  "description": "What's Happening cards - normalize experiences without overpromising",
+  "cards": [
+    {
+      "id": "happening-yawning",
+      "title": "The Yawns",
+      "type": "happening",
+      "headline": "You're yawning a lot and it feels strange",
+      "symptoms": [
+        "Frequent yawning",
+        "Eyes watering",
+        "Jaw tension or stretching",
+        "Feeling like you can't stop"
+      ],
+      "tryThis": "Let it happen. Don't suppress. Each yawn is your nervous system recalibrating.",
+      "whyItWorks": "Yawning is a serotonergic response, not tiredness. Psilocybin activates 5-HT2A receptors, which trigger this cascade. It's a sign the medicine is working, not that you're tired.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "This happens to most people. It typically peaks in the first 30-60 minutes and subsides."
+    },
+    {
+      "id": "happening-emotional-wave",
+      "title": "The Emotional Wave",
+      "type": "happening",
+      "headline": "Unexpected emotions are surfacing",
+      "symptoms": [
+        "Sudden sadness or grief",
+        "Tears without clear cause",
+        "Old memories surfacing",
+        "Feeling unexpectedly moved"
+      ],
+      "tryThis": "Don't resist. Find a comfortable position. Let the wave pass through you. It will pass.",
+      "whyItWorks": "Microdoses lower the default mode network's grip, allowing suppressed material to surface. This is integration, not breakdown.",
+      "duration": 0,
+      "bestFor": ["active", "integration"],
+      "normalcy": "Emotional release is common and often therapeutic. These waves typically last 5-20 minutes."
+    },
+    {
+      "id": "happening-body-load",
+      "title": "Body Load",
+      "type": "happening",
+      "headline": "Your body feels heavy or strange",
+      "symptoms": [
+        "Heaviness in limbs",
+        "Stomach awareness",
+        "Slight nausea",
+        "Restlessness or need to move"
+      ],
+      "tryThis": "Move gently. Stretch. Walk. Don't fight the sensation — work with it.",
+      "whyItWorks": "Psilocybin affects the gut (5-HT2A receptors are throughout the digestive system). Light movement helps the body process.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "Body load is dose-dependent and varies by person. It usually peaks at 45-90 minutes and fades."
+    },
+    {
+      "id": "happening-heightened-senses",
+      "title": "Everything Is Loud",
+      "type": "happening",
+      "headline": "Sounds, colors, or sensations feel amplified",
+      "symptoms": [
+        "Music sounds different or better",
+        "Colors seem more vivid",
+        "Textures feel more interesting",
+        "Sensitivity to light or sound"
+      ],
+      "tryThis": "Lean into it. Put on music you love. Look at something beautiful. This is enhanced perception, not overwhelm.",
+      "whyItWorks": "Psychedelics increase sensory gating, meaning more information reaches conscious awareness. Your filters are thinner today.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "Heightened senses are a feature, not a bug. Use it for creative work or appreciation."
+    },
+    {
+      "id": "happening-nothing",
+      "title": "Nothing Is Happening",
+      "type": "happening",
+      "headline": "You don't feel anything different",
+      "symptoms": [
+        "No perceptible change",
+        "Wondering if it's working",
+        "Temptation to take more",
+        "Disappointment"
+      ],
+      "tryThis": "Wait. Don't redose. The effects may be subtle. Check in tonight — you might notice the difference in retrospect.",
+      "whyItWorks": "Threshold doses work below conscious perception. The changes happen in how you respond to your day, not in how you feel right now.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "Sub-perceptual is the goal. 'Feeling it' often means you're above threshold. Give it time."
+    },
+    {
+      "id": "happening-anxiety-spike",
+      "title": "The Anxiety Spike",
+      "type": "happening",
+      "headline": "You're feeling more anxious than usual",
+      "symptoms": [
+        "Racing thoughts",
+        "Chest tightness",
+        "Feeling on edge",
+        "Difficulty settling"
+      ],
+      "tryThis": "This is almost always temporary. Ground yourself (feet on floor, 5-4-3-2-1). Consider: is this new anxiety, or anxiety you were already carrying that's now visible?",
+      "whyItWorks": "Psychedelics amplify what's already present. Anxiety on a dose day often reveals existing tension, not new problems.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "Some anxiety can occur, especially early in practice. It usually diminishes with familiarity and proper set/setting."
+    },
+    {
+      "id": "happening-creative-flow",
+      "title": "The Flow State",
+      "type": "happening",
+      "headline": "You're unusually focused and creative",
+      "symptoms": [
+        "Time passing quickly",
+        "Ideas flowing easily",
+        "Absorbed in a task",
+        "Connections you didn't see before"
+      ],
+      "tryThis": "Don't question it. Ride it. Capture ideas. This is the dose working as intended for creativity.",
+      "whyItWorks": "Reduced default mode network activity + increased neural connectivity = novel associations and sustained attention.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "Flow states are common, especially for creativity-oriented intentions. They typically last 2-4 hours."
+    },
+    {
+      "id": "happening-afterglow",
+      "title": "The Afterglow",
+      "type": "happening",
+      "headline": "You feel lighter the day after",
+      "symptoms": [
+        "Improved mood next day",
+        "Feeling more connected",
+        "Easier time with difficult tasks",
+        "Gratitude or appreciation"
+      ],
+      "tryThis": "Notice it. Write it down. This is data about what's possible for you.",
+      "whyItWorks": "Neuroplasticity effects continue after the acute experience. BDNF (brain-derived neurotrophic factor) remains elevated.",
+      "duration": 0,
+      "bestFor": ["integration"],
+      "normalcy": "The afterglow is real and measurable. It's often where the real benefit lives."
+    },
+    {
+      "id": "happening-energy-shift",
+      "title": "The Energy Shift",
+      "type": "happening",
+      "headline": "Your energy is different than expected",
+      "symptoms": [
+        "More tired than usual",
+        "Or: more energized than usual",
+        "Energy ebbs and flows",
+        "Need to rest or move"
+      ],
+      "tryThis": "Follow your body. If it wants rest, rest. If it wants movement, move. Don't fight the direction.",
+      "whyItWorks": "Energy modulation is individual. Some people feel activated, others feel restorative. Both are valid responses.",
+      "duration": 0,
+      "bestFor": ["active", "integration"],
+      "normalcy": "There's no 'right' energy response. Track your patterns across doses to understand your typical response."
+    },
+    {
+      "id": "happening-social-sensitivity",
+      "title": "Social Sensitivity",
+      "type": "happening",
+      "headline": "Other people feel more intense",
+      "symptoms": [
+        "More aware of others' emotions",
+        "Conversations feel deeper",
+        "Harder to mask or perform",
+        "Need for authentic connection"
+      ],
+      "tryThis": "Be selective about who you're around. This is a day for real conversations, not small talk. Or: enjoy solitude.",
+      "whyItWorks": "Reduced ego defenses mean more emotional permeability. You're picking up more social information than usual.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "Many people prefer solitude or selective company on dose days. Plan accordingly."
+    },
+    {
+      "id": "happening-comedown",
+      "title": "The Comedown",
+      "type": "happening",
+      "headline": "The effects are fading and you feel off",
+      "symptoms": [
+        "Slight flatness",
+        "Tiredness",
+        "Wanting it to continue",
+        "Mild headache"
+      ],
+      "tryThis": "Eat something. Drink water. Rest if possible. This transition is normal and temporary.",
+      "whyItWorks": "Serotonin modulation takes energy. Your brain is returning to baseline. Support it with nutrition and rest.",
+      "duration": 0,
+      "bestFor": ["integration"],
+      "normalcy": "A gentle comedown is normal. If it's harsh, consider your sleep, hydration, and food timing."
+    },
+    {
+      "id": "happening-tolerance-feeling",
+      "title": "Diminished Effects",
+      "type": "happening",
+      "headline": "The dose feels weaker than before",
+      "symptoms": [
+        "Less noticeable effects",
+        "Wondering if you need more",
+        "Same dose, different response",
+        "Temptation to increase"
+      ],
+      "tryThis": "Check your carryover. If you've dosed recently, tolerance is real. Don't increase — wait. Let your system reset.",
+      "whyItWorks": "5-HT2A receptor downregulation happens quickly. Dosing too frequently reduces sensitivity. The solution is rest, not more.",
+      "duration": 0,
+      "bestFor": ["active"],
+      "normalcy": "This is your cue to take a break. 2-3 days minimum between doses for most people."
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-12-24",
+  "description": "Workshop Drills - 1-3 minute guided exercises for Threshold Compass",
+  "drills": [
+    {
+      "id": "drill-box-breathing",
+      "title": "Box Breathing",
+      "type": "drill",
+      "headline": "Regulate your nervous system in 2 minutes",
+      "tryThis": "Inhale 4 seconds. Hold 4. Exhale 4. Hold 4. Repeat 6 times.",
+      "duration": 120,
+      "whyItWorks": "The equal intervals activate the parasympathetic nervous system, creating calm without sedation.",
+      "bestFor": ["active", "integration"],
+      "category": "breath",
+      "steps": [
+        "Find a comfortable position",
+        "Breathe in through nose for 4 seconds",
+        "Hold at the top for 4 seconds",
+        "Exhale through mouth for 4 seconds",
+        "Hold at the bottom for 4 seconds",
+        "Repeat 6 cycles"
+      ]
+    },
+    {
+      "id": "drill-5-4-3-2-1",
+      "title": "5-4-3-2-1 Grounding",
+      "type": "drill",
+      "headline": "Return to the present moment through your senses",
+      "tryThis": "Name 5 things you see. 4 you hear. 3 you feel. 2 you smell. 1 you taste.",
+      "duration": 180,
+      "whyItWorks": "Engages the prefrontal cortex and interrupts rumination by forcing sensory attention.",
+      "bestFor": ["active"],
+      "category": "grounding",
+      "steps": [
+        "Look around. Name 5 things you can see.",
+        "Listen. Name 4 things you can hear.",
+        "Touch. Name 3 things you can feel.",
+        "Smell. Name 2 things you can smell.",
+        "Taste. Name 1 thing you can taste."
+      ]
+    },
+    {
+      "id": "drill-body-scan-express",
+      "title": "Body Scan Express",
+      "type": "drill",
+      "headline": "Locate where you're holding tension in 90 seconds",
+      "tryThis": "Move attention from head to feet. Notice without judging. Mark what you find.",
+      "duration": 90,
+      "whyItWorks": "Awareness precedes release. You can't soften what you don't notice.",
+      "bestFor": ["active", "integration"],
+      "category": "attention",
+      "steps": [
+        "Start at the top of your head",
+        "Notice any sensation. Don't judge it.",
+        "Move to your face, jaw, neck",
+        "Notice. Move on.",
+        "Shoulders, arms, hands",
+        "Chest, gut, lower back",
+        "Hips, legs, feet",
+        "Where did you find something?"
+      ]
+    },
+    {
+      "id": "drill-intention-setting",
+      "title": "Intention Setting",
+      "type": "drill",
+      "headline": "Clarify direction before dosing",
+      "tryThis": "Answer three questions: What do I want more of? Less of? What could this teach me?",
+      "duration": 60,
+      "whyItWorks": "Direction > destination. A clear intention creates a filter for the experience.",
+      "bestFor": ["active"],
+      "category": "attention",
+      "steps": [
+        "What do I want more of today?",
+        "What do I want less of today?",
+        "If this dose could teach me one thing, what would be most useful?"
+      ]
+    },
+    {
+      "id": "drill-physiological-sigh",
+      "title": "Physiological Sigh",
+      "type": "drill",
+      "headline": "The fastest way to calm your nervous system",
+      "tryThis": "Double inhale through nose (full, then top off). Long exhale through mouth. Once is enough.",
+      "duration": 15,
+      "whyItWorks": "Discovered by Stanford researchers. Reinflates alveoli and triggers parasympathetic response faster than other breathing techniques.",
+      "bestFor": ["active"],
+      "category": "breath",
+      "steps": [
+        "Inhale through nose until lungs feel full",
+        "Inhale again (top off) — you'll find there's more space",
+        "Long, slow exhale through mouth",
+        "One cycle is often enough"
+      ]
+    },
+    {
+      "id": "drill-mindful-transition",
+      "title": "Mindful Transition",
+      "type": "drill",
+      "headline": "Create a clean boundary between activities",
+      "tryThis": "Before switching tasks: stop, take 3 breaths, name what you're leaving and entering.",
+      "duration": 30,
+      "whyItWorks": "Transitions are where we lose ourselves. Marking them creates intentionality.",
+      "bestFor": ["active", "integration"],
+      "category": "attention",
+      "steps": [
+        "Stop what you're doing completely",
+        "Take 3 slow breaths",
+        "Say to yourself: 'I'm leaving [activity]'",
+        "Say: 'I'm entering [next activity]'",
+        "Begin"
+      ]
+    },
+    {
+      "id": "drill-peripheral-vision",
+      "title": "Peripheral Vision Reset",
+      "type": "drill",
+      "headline": "Shift from focused to open awareness",
+      "tryThis": "Pick a point straight ahead. Without moving eyes, expand awareness to periphery. Hold 60 seconds.",
+      "duration": 60,
+      "whyItWorks": "Focused vision activates alertness. Peripheral vision activates calm. This is a nervous system toggle.",
+      "bestFor": ["active"],
+      "category": "attention",
+      "steps": [
+        "Find a spot directly in front of you to look at",
+        "Keep your eyes fixed on that spot",
+        "Without moving your eyes, notice what's at the edges of your vision",
+        "Expand that peripheral awareness as wide as possible",
+        "Hold for 60 seconds"
+      ]
+    },
+    {
+      "id": "drill-shake-it-off",
+      "title": "Shake It Off",
+      "type": "drill",
+      "headline": "Release stored tension through movement",
+      "tryThis": "Stand. Shake hands 30 seconds. Arms 30 seconds. Whole body 30 seconds. Stop. Notice.",
+      "duration": 90,
+      "whyItWorks": "Animals shake after stress to discharge nervous system activation. We suppress this instinct.",
+      "bestFor": ["active", "integration"],
+      "category": "movement",
+      "steps": [
+        "Stand with soft knees",
+        "Shake just your hands for 30 seconds",
+        "Add your arms for 30 seconds",
+        "Shake your whole body for 30 seconds",
+        "Stop completely. Stand still. Notice what's different."
+      ]
+    },
+    {
+      "id": "drill-cold-exposure",
+      "title": "Cold Snap",
+      "type": "drill",
+      "headline": "Acute stress for quick reset",
+      "tryThis": "30 seconds of cold water on your face or hands. Focus only on the sensation.",
+      "duration": 45,
+      "whyItWorks": "Cold activates the dive reflex, slowing heart rate and increasing parasympathetic tone.",
+      "bestFor": ["active"],
+      "category": "grounding",
+      "steps": [
+        "Run the coldest water from your tap",
+        "Submerge your hands or splash your face",
+        "Hold for 30 seconds",
+        "Focus completely on the sensation of cold"
+      ]
+    },
+    {
+      "id": "drill-object-meditation",
+      "title": "Object Meditation",
+      "type": "drill",
+      "headline": "Train attention with a single object",
+      "tryThis": "Pick up any small object. Explore it with full attention for 3 minutes. Every surface, every angle.",
+      "duration": 180,
+      "whyItWorks": "Single-point focus is a skill. Objects are easier than breath for beginners.",
+      "bestFor": ["active", "integration"],
+      "category": "attention",
+      "steps": [
+        "Pick up any small object (phone, mug, stone)",
+        "Look at it as if you've never seen it before",
+        "Notice every detail: texture, weight, temperature",
+        "Turn it over. Find something new.",
+        "When your mind wanders, return to the object"
+      ]
+    }
+  ]
+}

@@ -1,13 +1,13 @@
 # Threshold Compass — Development State
 
-> Updated: 2025-12-24 @ 22:30
+> Updated: 2025-12-25 @ 00:15
 
 ---
 
 ## Current Phase
 
-**Phase:** Phase 3 - Feature Complete MVP
-**Status:** All core features built, live on Supabase
+**Phase:** Phase 4 - Safety & Infrastructure
+**Status:** Dose validation complete, PWA and deployment pending
 
 ---
 
@@ -29,6 +29,7 @@
 - [x] Threshold feel selector (under/sweetspot/over)
 - [x] Context tags (work/creative/social/physical/rest)
 - [x] GitHub repo created: taylorsterlingwrites/threshold-compass
+- [x] **Dose validation system (P0 safety)** - substance-specific ranges, warning modals
 - [ ] PWA configured
 - [ ] Deployed to Vercel
 
@@ -65,6 +66,7 @@
 4. **Mobile-first:** No desktop-specific layouts in v1
 5. **Next.js 16:** Using @supabase/ssr (not deprecated auth-helpers)
 6. **Suspense:** useSearchParams wrapped for build compatibility
+7. **Dose validation:** Substance-specific ranges with 3-tier warnings (info/warning/critical)
 
 ---
 

@@ -1,10 +1,16 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { SubstanceType } from '@/types';
+import {
+  DOSE_RANGES,
+  validateDose,
+  type Substance,
+  type DoseWarning,
+} from '@/lib/constants/dose-ranges';
 
 function LogPageContent() {
   const searchParams = useSearchParams();
@@ -28,17 +34,53 @@ function LogPageContent() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<DoseWarning | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
+
+  // Auto-reset amount when switching substances
+  useEffect(() => {
+    setAmount('');
+    setWarning(null);
+  }, [substance]);
+
+  // Get current dose range for the selected substance
+  const doseRange = DOSE_RANGES[substance as Substance];
 
   const handleDoseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    // Convert to grams for psilocybin (input is in mg)
+    const rawAmount = parseFloat(amount);
+    const normalizedAmount = substance === 'psilocybin' ? rawAmount / 1000 : rawAmount;
+
+    // Validate dose
+    const doseWarning = validateDose(substance as Substance, normalizedAmount);
+
+    if (doseWarning) {
+      if (!doseWarning.allowContinue) {
+        // Critical warning - block submission
+        setWarning(doseWarning);
+        return;
+      }
+      if (!pendingSubmit) {
+        // First attempt with warning - show modal for confirmation
+        setWarning(doseWarning);
+        setPendingSubmit(true);
+        return;
+      }
+    }
+
+    // Clear warning state and proceed
+    setWarning(null);
+    setPendingSubmit(false);
+    setLoading(true);
+
     try {
-      // Prepare dose data
+      // Prepare dose data (store in grams)
       const doseData = {
         batch_id: batchId || 'default-batch',
-        amount: parseFloat(amount),
+        amount: normalizedAmount,
         food_state: foodState,
         intention: intention,
       };
@@ -280,9 +322,12 @@ function LogPageContent() {
             required
           />
           <p className="text-ivory/40 text-xs mt-1">
-            {substance === 'psilocybin'
-              ? 'Typical microdose: 50-200mg'
-              : 'Typical microdose: 5-20μg'}
+            Typical: {substance === 'psilocybin'
+              ? `${doseRange.typicalLow * 1000}-${doseRange.typicalHigh * 1000}mg`
+              : `${doseRange.typicalLow}-${doseRange.typicalHigh}µg`}
+            {' • '}Max: {substance === 'psilocybin'
+              ? `${doseRange.max * 1000}mg`
+              : `${doseRange.max}µg`}
           </p>
         </div>
 
@@ -446,6 +491,67 @@ function LogPageContent() {
           </div>
         )}
 
+        {/* Dose Warning Modal */}
+        {warning && (
+          <div className={`rounded-sm p-4 ${
+            warning.level === 'critical'
+              ? 'bg-red-900/30 border-2 border-red-500'
+              : warning.level === 'warning'
+              ? 'bg-yellow-900/30 border-2 border-yellow-500'
+              : 'bg-blue-900/30 border border-blue-500/50'
+          }`}>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">
+                {warning.level === 'critical' ? '🚫' : warning.level === 'warning' ? '⚠️' : 'ℹ️'}
+              </span>
+              <div className="flex-1">
+                <h3 className={`font-mono text-sm uppercase tracking-wide mb-1 ${
+                  warning.level === 'critical'
+                    ? 'text-red-400'
+                    : warning.level === 'warning'
+                    ? 'text-yellow-400'
+                    : 'text-blue-400'
+                }`}>
+                  {warning.title}
+                </h3>
+                <p className="text-ivory/80 text-sm">{warning.message}</p>
+                {warning.allowContinue && pendingSubmit && (
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWarning(null);
+                        setPendingSubmit(false);
+                      }}
+                      className="flex-1 py-2 text-sm border border-ivory/20 rounded-sm text-ivory/60 hover:bg-ivory/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2 text-sm bg-yellow-600 text-black font-mono uppercase rounded-sm hover:bg-yellow-500"
+                    >
+                      Log Anyway
+                    </button>
+                  </div>
+                )}
+                {!warning.allowContinue && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWarning(null);
+                      setAmount('');
+                    }}
+                    className="mt-3 w-full py-2 text-sm border border-red-500/50 rounded-sm text-red-400 hover:bg-red-500/10"
+                  >
+                    Understood — Clear Dose
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Carryover Preview */}
         <div className="bg-charcoal/50 border border-ivory/10 rounded-sm p-4">
           <div className="flex justify-between items-center">
@@ -459,13 +565,15 @@ function LogPageContent() {
           </p>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading || !amount || !intention}
-          className="w-full bg-orange text-black font-mono uppercase tracking-wide py-4 rounded-sm hover:bg-orange/90 disabled:opacity-50 transition-colors"
-        >
-          {loading ? 'Logging...' : 'Log Dose'}
-        </button>
+        {(!warning || warning.allowContinue) && !pendingSubmit && (
+          <button
+            type="submit"
+            disabled={loading || !amount || !intention}
+            className="w-full bg-orange text-black font-mono uppercase tracking-wide py-4 rounded-sm hover:bg-orange/90 disabled:opacity-50 transition-colors"
+          >
+            {loading ? 'Logging...' : 'Log Dose'}
+          </button>
+        )}
       </form>
 
       {/* Quick check-in link */}

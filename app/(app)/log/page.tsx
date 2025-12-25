@@ -4,13 +4,17 @@ import { useState, Suspense, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { SubstanceType, Batch } from '@/types';
+import type { SubstanceType, Batch, SensitivityProfile } from '@/types';
 import {
   DOSE_RANGES,
   validateDose,
   type Substance,
   type DoseWarning,
 } from '@/lib/constants/dose-ranges';
+import {
+  checkMedicationContraindications,
+  type ContraindicationLevel,
+} from '@/lib/constants/medications';
 
 function LogPageContent() {
   const searchParams = useSearchParams();
@@ -38,16 +42,22 @@ function LogPageContent() {
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loadingBatches, setLoadingBatches] = useState(true);
+  const [medications, setMedications] = useState<string[]>([]);
+  const [medicationWarning, setMedicationWarning] = useState<{
+    level: ContraindicationLevel | 'none';
+    summary: string;
+    acknowledged: boolean;
+  } | null>(null);
 
-  // Fetch batches on mount
+  // Fetch batches and user medications on mount
   useEffect(() => {
-    const fetchBatches = async () => {
-      const response = await fetch('/api/batches');
-      const data = await response.json();
-      if (data.batches) {
-        setBatches(data.batches);
-        // Auto-select active batch for current substance
-        const activeBatch = data.batches.find(
+    const fetchData = async () => {
+      // Fetch batches
+      const batchResponse = await fetch('/api/batches');
+      const batchData = await batchResponse.json();
+      if (batchData.batches) {
+        setBatches(batchData.batches);
+        const activeBatch = batchData.batches.find(
           (b: Batch) => b.is_active && b.substance_type === substance
         );
         if (activeBatch) {
@@ -55,8 +65,27 @@ function LogPageContent() {
         }
       }
       setLoadingBatches(false);
+
+      // Fetch user medications
+      const userResponse = await fetch('/api/users');
+      const userData = await userResponse.json();
+      if (userData.user?.sensitivity?.medications) {
+        const meds = userData.user.sensitivity.medications;
+        setMedications(meds);
+        // Check for contraindications
+        if (meds.length > 0) {
+          const result = checkMedicationContraindications(meds);
+          if (result.level !== 'none') {
+            setMedicationWarning({
+              level: result.level,
+              summary: result.summary,
+              acknowledged: false,
+            });
+          }
+        }
+      }
     };
-    fetchBatches();
+    fetchData();
   }, []);
 
   // Auto-reset amount and select appropriate batch when switching substances
@@ -76,6 +105,18 @@ function LogPageContent() {
   const handleDoseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Block if absolute medication contraindication
+    if (medicationWarning?.level === 'block') {
+      setError('Cannot log dose due to dangerous medication interaction. Please review your medications in Settings.');
+      return;
+    }
+
+    // Require acknowledgment for warnings
+    if (medicationWarning?.level === 'warn' && !medicationWarning.acknowledged) {
+      setError('Please acknowledge the medication warning before logging a dose.');
+      return;
+    }
 
     // Convert to grams for psilocybin (input is in mg)
     const rawAmount = parseFloat(amount);
@@ -301,6 +342,55 @@ function LogPageContent() {
         <h1 className="font-mono text-xl uppercase tracking-wide">Log Dose</h1>
         <div className="w-10" />
       </header>
+
+      {/* Medication Warning Banner */}
+      {medicationWarning && medicationWarning.level !== 'none' && (
+        <div className={`rounded-sm p-4 mb-4 ${
+          medicationWarning.level === 'block'
+            ? 'bg-red-900/40 border-2 border-red-500'
+            : medicationWarning.level === 'warn'
+            ? 'bg-yellow-900/30 border border-yellow-500/50'
+            : 'bg-blue-900/20 border border-blue-500/30'
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">
+              {medicationWarning.level === 'block' ? '🚫' : medicationWarning.level === 'warn' ? '⚠️' : 'ℹ️'}
+            </span>
+            <div className="flex-1">
+              <h3 className={`font-mono text-sm uppercase tracking-wide mb-1 ${
+                medicationWarning.level === 'block'
+                  ? 'text-red-400'
+                  : medicationWarning.level === 'warn'
+                  ? 'text-yellow-400'
+                  : 'text-blue-400'
+              }`}>
+                {medicationWarning.level === 'block' ? 'STOP - Dangerous Interaction' : 'Medication Interaction'}
+              </h3>
+              <p className="text-ivory/80 text-sm">{medicationWarning.summary}</p>
+              {medicationWarning.level === 'block' ? (
+                <div className="mt-3">
+                  <Link
+                    href="/settings"
+                    className="text-sm text-red-400 underline"
+                  >
+                    Review your medications in Settings
+                  </Link>
+                </div>
+              ) : !medicationWarning.acknowledged ? (
+                <button
+                  type="button"
+                  onClick={() => setMedicationWarning({ ...medicationWarning, acknowledged: true })}
+                  className="mt-3 px-3 py-1 text-sm bg-yellow-600/20 border border-yellow-500/50 rounded-sm text-yellow-400"
+                >
+                  I understand the risks
+                </button>
+              ) : (
+                <p className="mt-2 text-xs text-green-400">✓ Acknowledged</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleDoseSubmit} className="space-y-6">
         {/* Substance */}

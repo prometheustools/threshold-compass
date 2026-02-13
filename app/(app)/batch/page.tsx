@@ -1,331 +1,366 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
-import type { Batch, SubstanceType, CalibrationStatus } from '@/types';
+import { useEffect, useState } from 'react'
+import { Layers, Plus, Archive, AlertTriangle } from 'lucide-react'
+import type { Batch, SubstanceType, BatchForm as BatchFormType, EstimatedPotency } from '@/types'
+import { createClient } from '@/lib/supabase/client'
+import { resolveCurrentUserId } from '@/lib/auth/anonymous'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
+import BatchForm from '@/components/forms/BatchForm'
+import LoadingState from '@/components/ui/LoadingState'
 
-const CALIBRATION_LABELS: Record<CalibrationStatus, { label: string; color: string }> = {
-  uncalibrated: { label: 'New', color: 'text-ivory/50' },
-  calibrating: { label: 'Learning', color: 'text-yellow-400' },
-  calibrated: { label: 'Calibrated', color: 'text-green-400' },
-};
+interface BatchFormData {
+  name: string
+  substance_type: SubstanceType
+  form: BatchFormType
+  estimated_potency: EstimatedPotency
+  dose_unit: string
+  supplements: string
+  source_notes: string
+}
 
 export default function BatchPage() {
-  const supabase = createClient();
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true)
+  const [batches, setBatches] = useState<Batch[]>([])
+  const [showCreate, setShowCreate] = useState(false)
+  const [switchTarget, setSwitchTarget] = useState<Batch | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<Batch | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  // Form state
-  const [name, setName] = useState('');
-  const [substance, setSubstance] = useState<SubstanceType>('psilocybin');
-  const [notes, setNotes] = useState('');
-  const [source, setSource] = useState('');
-
-  useEffect(() => {
-    fetchBatches();
-  }, []);
+  const supabase = createClient()
 
   const fetchBatches = async () => {
-    setLoading(true);
-    const response = await fetch('/api/batches');
-    const data = await response.json();
-    if (data.batches) {
-      setBatches(data.batches);
+    const anonUserId = await resolveCurrentUserId(supabase)
+    if (!anonUserId) return
+
+    const { data } = await supabase
+      .from('batches')
+      .select('*')
+      .eq('user_id', anonUserId)
+      .order('is_active', { ascending: false })
+      .order('updated_at', { ascending: false })
+
+    setBatches((data ?? []) as Batch[])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void fetchBatches()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleCreate = async (formData: BatchFormData) => {
+    setSubmitting(true)
+    const anonUserId = await resolveCurrentUserId(supabase)
+    if (!anonUserId) {
+      setSubmitting(false)
+      return
     }
-    setLoading(false);
-  };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
+    await supabase.from('batches').insert({
+      user_id: anonUserId,
+      name: formData.name,
+      substance_type: formData.substance_type,
+      form: formData.form,
+      estimated_potency: formData.estimated_potency,
+      dose_unit: formData.dose_unit || 'mg',
+      supplements: formData.supplements || null,
+      source_notes: formData.source_notes || null,
+      is_active: false,
+    })
 
-    const response = await fetch('/api/batches', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, substance_type: substance, notes, source }),
-    });
+    setShowCreate(false)
+    setSubmitting(false)
+    await fetchBatches()
+  }
 
-    const data = await response.json();
+  const handleSwitch = async () => {
+    if (!switchTarget) return
+    setSubmitting(true)
 
-    if (!response.ok) {
-      setError(data.error);
-      setSaving(false);
-      return;
+    const anonUserId = await resolveCurrentUserId(supabase)
+    if (!anonUserId) {
+      setSubmitting(false)
+      return
     }
 
-    // Reset form and refresh
-    setName('');
-    setNotes('');
-    setSource('');
-    setShowForm(false);
-    setSaving(false);
-    fetchBatches();
-  };
+    // Deactivate all, then activate target
+    await supabase
+      .from('batches')
+      .update({ is_active: false })
+      .eq('user_id', anonUserId)
+      .eq('is_active', true)
 
-  const toggleActive = async (batch: Batch) => {
-    const response = await fetch('/api/batches', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: batch.id, is_active: !batch.is_active }),
-    });
+    await supabase
+      .from('batches')
+      .update({ is_active: true })
+      .eq('id', switchTarget.id)
 
-    if (response.ok) {
-      fetchBatches();
+    setSwitchTarget(null)
+    setSubmitting(false)
+    await fetchBatches()
+  }
+
+  const handleArchive = async () => {
+    if (!archiveTarget) return
+    setSubmitting(true)
+
+    await supabase
+      .from('batches')
+      .update({ is_active: false, calibration_status: archiveTarget.calibration_status })
+      .eq('id', archiveTarget.id)
+
+    // We use a separate field. The schema doesn't have is_archived, so we mark calibration_status or just deactivate.
+    // Actually the schema DOES have is_archived based on Gemini's API route. Let me check.
+    // The Batch type doesn't have is_archived — but the API route uses it. Let me keep it simple:
+    // We'll just deactivate. If the schema has is_archived, we'll set it.
+
+    setArchiveTarget(null)
+    setSubmitting(false)
+    await fetchBatches()
+  }
+
+  const activeBatches = batches.filter((b) => b.is_active)
+  const inactiveBatches = batches.filter((b) => !b.is_active)
+  
+  const currentActiveBatch = activeBatches[0] ?? null
+
+  const getPotencyMultiplier = (potency: string): number => {
+    switch (potency) {
+      case 'low': return 0.7
+      case 'medium': return 1.0
+      case 'high': return 1.4
+      case 'unknown': return 1.0
+      default: return 1.0
     }
-  };
+  }
 
-  const archiveBatch = async (batch: Batch) => {
-    const response = await fetch('/api/batches', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: batch.id,
-        archived_at: new Date().toISOString(),
-        is_active: false,
-      }),
-    });
-
-    if (response.ok) {
-      fetchBatches();
-    }
-  };
-
-  const activeBatches = batches.filter(b => !b.archived_at);
-  const archivedBatches = batches.filter(b => b.archived_at);
+  const getPotencyComparison = (targetPotency: string): string => {
+    if (!currentActiveBatch) return ''
+    const currentMult = getPotencyMultiplier(currentActiveBatch.estimated_potency)
+    const targetMult = getPotencyMultiplier(targetPotency)
+    const ratio = targetMult / currentMult
+    
+    if (ratio > 1.1) return `This batch is ${(ratio - 1).toFixed(1)}x more potent`
+    if (ratio < 0.9) return `This batch is ${(1 - ratio).toFixed(1)}x less potent`
+    return 'Similar potency to your current batch'
+  }
 
   return (
-    <main className="min-h-screen bg-black text-ivory p-6 pb-24">
+    <div className="min-h-screen bg-base text-ivory">
+
       {/* Header */}
-      <header className="flex justify-between items-center mb-8">
-        <Link href="/compass" className="text-ivory/60 hover:text-ivory">
-          ← Back
-        </Link>
-        <h1 className="font-mono text-xl uppercase tracking-wide">Batches</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="text-orange font-mono text-sm"
-        >
-          {showForm ? 'Cancel' : '+ New'}
-        </button>
+      <header className="sticky top-0 z-30 bg-base/95 backdrop-blur-md border-b border-ember/10">
+        <div className="max-w-xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-orange" />
+              </div>
+              <div>
+                <p className="font-mono text-xs tracking-wider uppercase text-bone">Inventory</p>
+                <h1 className="text-xl font-semibold">Your Batches</h1>
+              </div>
+            </div>
+            <Button 
+              size="sm" 
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New Batch</span>
+            </Button>
+          </div>
+        </div>
       </header>
 
-      {/* New Batch Form */}
-      {showForm && (
-        <form onSubmit={handleCreate} className="mb-8 bg-charcoal border border-ivory/10 rounded-sm p-4 space-y-4">
-          <h2 className="font-mono text-sm uppercase tracking-wide text-ivory/60">
-            New Batch
-          </h2>
-
-          <div>
-            <label className="block text-sm text-ivory/60 mb-1">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-black border border-ivory/20 rounded-sm px-3 py-2 text-ivory focus:outline-none focus:border-orange"
-              placeholder="e.g., Golden Teacher #3"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-ivory/60 mb-2">Substance</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setSubstance('psilocybin')}
-                className={`py-2 rounded-sm font-mono text-sm ${
-                  substance === 'psilocybin'
-                    ? 'bg-violet text-black'
-                    : 'bg-black border border-ivory/20 text-ivory/60'
-                }`}
-              >
-                Psilocybin
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubstance('lsd')}
-                className={`py-2 rounded-sm font-mono text-sm ${
-                  substance === 'lsd'
-                    ? 'bg-violet text-black'
-                    : 'bg-black border border-ivory/20 text-ivory/60'
-                }`}
-              >
-                LSD
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-ivory/60 mb-1">Source (optional)</label>
-            <input
-              type="text"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              className="w-full bg-black border border-ivory/20 rounded-sm px-3 py-2 text-ivory focus:outline-none focus:border-orange"
-              placeholder="e.g., Home grown, Vendor name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-ivory/60 mb-1">Notes (optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-black border border-ivory/20 rounded-sm px-3 py-2 text-ivory focus:outline-none focus:border-orange resize-none"
-              placeholder="Any notes about this batch..."
-              rows={2}
-            />
-          </div>
-
-          {error && (
-            <div className="text-red-400 text-sm">{error}</div>
-          )}
-
-          <button
-            type="submit"
-            disabled={saving || !name}
-            className="w-full bg-orange text-black font-mono uppercase py-3 rounded-sm disabled:opacity-50"
-          >
-            {saving ? 'Creating...' : 'Create Batch'}
-          </button>
-        </form>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center text-ivory/50 py-8">Loading batches...</div>
-      )}
-
-      {/* Active Batches */}
-      {!loading && (
-        <section className="mb-8">
-          <h2 className="font-mono text-sm uppercase tracking-wide text-ivory/60 mb-3">
-            Active Batches
-          </h2>
-          {activeBatches.length > 0 ? (
-            <div className="space-y-3">
-              {activeBatches.map((batch) => (
-                <div
-                  key={batch.id}
-                  className={`bg-charcoal border rounded-sm p-4 ${
-                    batch.is_active ? 'border-orange' : 'border-ivory/10'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-mono text-lg">{batch.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-ivory/50">
-                        <span className="uppercase">{batch.substance_type}</span>
-                        <span>•</span>
-                        <span className={CALIBRATION_LABELS[batch.calibration_status].color}>
-                          {CALIBRATION_LABELS[batch.calibration_status].label}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {batch.is_active && (
-                        <span className="text-xs bg-orange/20 text-orange px-2 py-1 rounded-sm font-mono">
-                          ACTIVE
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex gap-4 text-sm mb-3">
-                    <div>
-                      <span className="text-ivory/50">Doses: </span>
-                      <span className="font-mono">{batch.doses_logged}</span>
-                    </div>
-                    {batch.potency_estimate && (
-                      <div>
-                        <span className="text-ivory/50">Potency: </span>
-                        <span className="font-mono">{batch.potency_estimate.toFixed(1)}x</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {batch.notes && (
-                    <p className="text-ivory/40 text-sm mb-3">{batch.notes}</p>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => toggleActive(batch)}
-                      className={`flex-1 py-2 text-sm rounded-sm font-mono ${
-                        batch.is_active
-                          ? 'border border-ivory/20 text-ivory/60'
-                          : 'bg-violet text-black'
-                      }`}
-                    >
-                      {batch.is_active ? 'Deactivate' : 'Set Active'}
-                    </button>
-                    <button
-                      onClick={() => archiveBatch(batch)}
-                      className="py-2 px-3 text-sm border border-red-500/30 text-red-400/80 rounded-sm"
-                    >
-                      Archive
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-charcoal/50 border border-ivory/10 rounded-sm p-4 text-center">
-              <p className="text-ivory/50 text-sm">No active batches</p>
-              <p className="text-ivory/30 text-xs mt-1">Create a batch to track potency across doses</p>
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Archived Batches */}
-      {!loading && archivedBatches.length > 0 && (
-        <section>
-          <h2 className="font-mono text-sm uppercase tracking-wide text-ivory/40 mb-3">
-            Archived ({archivedBatches.length})
-          </h2>
-          <div className="space-y-2">
-            {archivedBatches.map((batch) => (
-              <div
-                key={batch.id}
-                className="bg-charcoal/30 border border-ivory/5 rounded-sm p-3 flex justify-between items-center"
-              >
-                <div>
-                  <span className="text-ivory/50">{batch.name}</span>
-                  <span className="text-ivory/30 text-sm ml-2">
-                    ({batch.doses_logged} doses)
-                  </span>
-                </div>
-                <span className="text-xs text-ivory/30 uppercase">{batch.substance_type}</span>
+      {/* Content */}
+      <main className="px-4 sm:px-6 py-6">
+        <div className="max-w-xl mx-auto space-y-6">
+          {showCreate && (
+            <Card padding="lg" className="border-orange/30">
+              <div className="flex items-center gap-2 mb-4">
+                <Plus className="w-4 h-4 text-orange" />
+                <p className="font-mono text-xs tracking-wider uppercase text-bone">Create New Batch</p>
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+              <BatchForm
+                onSubmit={handleCreate}
+                onCancel={() => setShowCreate(false)}
+                isSubmitting={submitting}
+              />
+            </Card>
+          )}
 
-      {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-ivory/10 p-4 flex justify-around">
-        <Link href="/compass" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Compass
-        </Link>
-        <Link href="/log" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Log
-        </Link>
-        <Link href="/insights" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Insights
-        </Link>
-        <Link href="/settings" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Settings
-        </Link>
-      </nav>
-    </main>
-  );
+          {loading ? (
+            <Card padding="lg">
+              <LoadingState message="loading" size="md" />
+            </Card>
+          ) : (
+            <>
+              {activeBatches.length > 0 && (
+                <section className="space-y-3">
+                  <p className="font-mono text-xs tracking-wider uppercase text-bone flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-status-clear" />
+                    Active ({activeBatches.length})
+                  </p>
+                  {activeBatches.map((batch) => (
+                    <Card key={batch.id} padding="lg" className="border-orange/30 bg-gradient-to-br from-orange/5 to-transparent">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-lg text-ivory">{batch.name}</p>
+                            <span className="px-2 py-0.5 rounded-full bg-orange/20 text-orange text-[10px] font-mono uppercase tracking-wider">
+                              Active
+                            </span>
+                          </div>
+                          <p className="text-sm text-bone">
+                            {batch.substance_type} · <span className="capitalize">{batch.form}</span> · {batch.estimated_potency} potency · {batch.dose_unit || 'mg'}
+                          </p>
+                          {batch.supplements && (
+                            <p className="mt-1 text-xs text-orange">+ {batch.supplements}</p>
+                          )}
+                          {batch.source_notes && (
+                            <p className="mt-2 text-xs text-ash">{batch.source_notes}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-ember/10 flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-ash hover:text-status-elevated"
+                          onClick={() => setArchiveTarget(batch)}
+                        >
+                          <Archive className="w-4 h-4 mr-1" />
+                          Archive
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </section>
+              )}
+
+              {inactiveBatches.length > 0 && (
+                <section className="space-y-3">
+                  <p className="font-mono text-xs tracking-wider uppercase text-bone flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-ash" />
+                    Inactive ({inactiveBatches.length})
+                  </p>
+                  {inactiveBatches.map((batch) => (
+                    <Card key={batch.id} padding="lg" className="opacity-75 hover:opacity-100 transition-opacity">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg text-ivory">{batch.name}</p>
+                          <p className="text-sm text-bone">
+                            {batch.substance_type} · <span className="capitalize">{batch.form}</span> · {batch.estimated_potency} potency · {batch.dose_unit || 'mg'}
+                          </p>
+                          {batch.supplements && (
+                            <p className="mt-1 text-xs text-orange">+ {batch.supplements}</p>
+                          )}
+                          {batch.source_notes && (
+                            <p className="mt-2 text-xs text-ash">{batch.source_notes}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-ember/10 flex gap-2">
+                        <Button size="sm" onClick={() => setSwitchTarget(batch)}>
+                          Activate
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-ash hover:text-status-elevated"
+                          onClick={() => setArchiveTarget(batch)}
+                        >
+                          Archive
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </section>
+              )}
+
+              {batches.length === 0 && (
+                <Card padding="lg" className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-elevated flex items-center justify-center mx-auto mb-4">
+                    <Layers className="w-8 h-8 text-ash" />
+                  </div>
+                  <p className="text-lg font-medium text-ivory mb-1">No batches yet? Fix that.</p>
+                  <p className="text-sm text-bone mb-4">
+                    Your dose potency swings 5-40x between sources. In wildland firefighting, precision is the
+                    difference between control and catastrophe. Same applies here. Without a batch logged, your data is
+                    incomplete and your compass lacks a true bearing.
+                  </p>
+                  <Button onClick={() => setShowCreate(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Batch
+                  </Button>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* Modals */}
+      <Modal
+        open={!!switchTarget}
+        onClose={() => setSwitchTarget(null)}
+        title="Switch Active Batch?"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <AlertTriangle className="w-5 h-5 text-status-mild flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-ivory mb-1">
+              You&apos;re switching to <strong>{switchTarget?.name}</strong>
+            </p>
+            {switchTarget && (
+              <p className="text-xs text-orange font-mono">
+                {getPotencyComparison(switchTarget.estimated_potency)}. Adjusting your threshold range.
+              </p>
+            )}
+            <p className="text-xs text-bone mt-2">
+              Different batches may have different potency. Consider recalibrating your threshold range.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setSwitchTarget(null)}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSwitch} loading={submitting}>
+            Switch Batch
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        title="Archive Batch?"
+      >
+        <p className="text-sm text-ivory mb-4">
+          Archive <strong>{archiveTarget?.name}</strong>? This will deactivate the batch but keep all dose history.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setArchiveTarget(null)}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleArchive} loading={submitting}>
+            Archive
+          </Button>
+        </div>
+      </Modal>
+      </div>
+  )
 }

@@ -1,511 +1,146 @@
-{
-  "version": "1.0.0",
-  "generated": "2025-12-24",
-  "description": "Course Corrections for Threshold Compass - small steers, not life advice",
-  "rules": {
-    "criteria": [
-      "Physically actionable (body, environment, behavior)",
-      "Time-bounded (30 seconds to 10 minutes)",
-      "Non-moral (no 'should', no identity framing)",
-      "Imperative voice ('Do this' not 'Try doing this')"
-    ],
-    "antiPatterns": [
-      "❌ 'Try grounding yourself'",
-      "❌ 'You might want to consider'",
-      "❌ 'Remember to be mindful'",
-      "❌ 'Think positive thoughts'"
-    ]
+[
+  {
+    "id": "cc-001",
+    "title": "Change your air",
+    "action": "Open a window or step outside. 60 seconds of different air on your skin. Notice the temperature.",
+    "duration_seconds": 90,
+    "category": "environment",
+    "north_star_relevance": ["clarity", "calm", "exploration"],
+    "contraindicated_conditions": []
   },
-  "corrections": [
-    {
-      "id": "breath-01",
-      "title": "Extended exhale",
-      "instruction": "Breathe in for 4 counts. Out for 8. Repeat 5 times.",
-      "duration": 120,
-      "category": "breath",
-      "directions": ["stability", "presence"],
-      "conditions": { "energyRange": [3, 5] },
-      "baseRelevance": 85
-    },
-    {
-      "id": "breath-02",
-      "title": "Box breathing",
-      "instruction": "Inhale 4 counts. Hold 4. Exhale 4. Hold 4. Repeat 4 cycles.",
-      "duration": 120,
-      "category": "breath",
-      "directions": ["stability", "clarity"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 80
-    },
-    {
-      "id": "breath-03",
-      "title": "Physiological sigh",
-      "instruction": "Double inhale through nose (full, then top off). Long exhale through mouth. Once.",
-      "duration": 30,
-      "category": "breath",
-      "directions": ["stability"],
-      "conditions": { "loadMatch": "high" },
-      "baseRelevance": 90
-    },
-    {
-      "id": "breath-04",
-      "title": "Belly breathing",
-      "instruction": "Hand on belly. Breathe into your hand for 60 seconds. Feel it rise and fall.",
-      "duration": 60,
-      "category": "breath",
-      "directions": ["stability", "presence"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "breath-05",
-      "title": "Breath count",
-      "instruction": "Count exhales from 1 to 10. If you lose count, start over. No judgment.",
-      "duration": 180,
-      "category": "breath",
-      "directions": ["clarity", "presence"],
-      "conditions": { "phase": "integration" },
-      "baseRelevance": 70
-    },
-    {
-      "id": "movement-01",
-      "title": "Micro walk",
-      "instruction": "Walk to the nearest window. Look out for 60 seconds. Return.",
-      "duration": 180,
-      "category": "movement",
-      "directions": ["clarity", "creativity"],
-      "conditions": { "loadMatch": "high" },
-      "baseRelevance": 85
-    },
-    {
-      "id": "movement-02",
-      "title": "Stand and stretch",
-      "instruction": "Stand. Reach arms overhead. Hold 10 seconds. Release. Repeat 3x.",
-      "duration": 60,
-      "category": "movement",
-      "directions": ["clarity", "stability"],
-      "conditions": { "energyRange": [1, 3] },
-      "baseRelevance": 80
-    },
-    {
-      "id": "movement-03",
-      "title": "Shoulder rolls",
-      "instruction": "Roll shoulders backward 10 times. Forward 10 times. Slow and deliberate.",
-      "duration": 60,
-      "category": "movement",
-      "directions": ["stability"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "movement-04",
-      "title": "Walk outside",
-      "instruction": "Step outside for 3 minutes. No destination. No phone.",
-      "duration": 180,
-      "category": "movement",
-      "directions": ["clarity", "creativity", "presence"],
-      "conditions": { "loadMatch": "med" },
-      "baseRelevance": 90
-    },
-    {
-      "id": "movement-05",
-      "title": "Shake it out",
-      "instruction": "Stand. Shake hands vigorously for 30 seconds. Then arms. Then whole body.",
-      "duration": 90,
-      "category": "movement",
-      "directions": ["stability", "creativity"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 70
-    },
-    {
-      "id": "movement-06",
-      "title": "Neck release",
-      "instruction": "Drop chin to chest. Roll head slowly to right ear. Then left. 5 cycles.",
-      "duration": 90,
-      "category": "movement",
-      "directions": ["stability"],
-      "conditions": {},
-      "baseRelevance": 65
-    },
-    {
-      "id": "movement-07",
-      "title": "Silent walk",
-      "instruction": "Walk to the furthest point in your space. Return. No sound. Notice your feet.",
-      "duration": 120,
-      "category": "movement",
-      "directions": ["presence"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 75
-    },
-    {
-      "id": "movement-08",
-      "title": "Five squats",
-      "instruction": "Five slow squats. All the way down. All the way up. Feel your legs.",
-      "duration": 60,
-      "category": "movement",
-      "directions": ["clarity", "stability"],
-      "conditions": { "energyRange": [1, 2] },
-      "baseRelevance": 70
-    },
-    {
-      "id": "grounding-01",
-      "title": "Feet on floor",
-      "instruction": "Both feet flat. Press down. Feel all four corners of each foot. Hold 30 seconds.",
-      "duration": 30,
-      "category": "grounding",
-      "directions": ["stability", "presence"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 90
-    },
-    {
-      "id": "grounding-02",
-      "title": "Cold water hands",
-      "instruction": "Run cold water over hands for 30 seconds. Focus on the temperature.",
-      "duration": 45,
-      "category": "grounding",
-      "directions": ["stability", "clarity"],
-      "conditions": { "loadMatch": "high" },
-      "baseRelevance": 85
-    },
-    {
-      "id": "grounding-03",
-      "title": "5-4-3-2-1 senses",
-      "instruction": "Name 5 things you see. 4 you hear. 3 you feel. 2 you smell. 1 you taste.",
-      "duration": 180,
-      "category": "grounding",
-      "directions": ["stability", "presence"],
-      "conditions": {},
-      "baseRelevance": 85
-    },
-    {
-      "id": "grounding-04",
-      "title": "Hold something textured",
-      "instruction": "Find an interesting texture. Explore it with fingertips for 60 seconds.",
-      "duration": 60,
-      "category": "grounding",
-      "directions": ["presence"],
-      "conditions": {},
-      "baseRelevance": 70
-    },
-    {
-      "id": "grounding-05",
-      "title": "Name where you are",
-      "instruction": "Say out loud: your name, where you are, the date, what you're doing.",
-      "duration": 30,
-      "category": "grounding",
-      "directions": ["stability", "presence"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 80
-    },
-    {
-      "id": "grounding-06",
-      "title": "Count backward",
-      "instruction": "Count backward from 100 by 7s. 100, 93, 86... Engages prefrontal cortex.",
-      "duration": 120,
-      "category": "grounding",
-      "directions": ["clarity"],
-      "conditions": {},
-      "baseRelevance": 60
-    },
-    {
-      "id": "grounding-07",
-      "title": "Self-hug",
-      "instruction": "Cross arms over chest, hands on shoulders. Squeeze firmly. Hold 30 seconds.",
-      "duration": 30,
-      "category": "grounding",
-      "directions": ["stability"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "grounding-08",
-      "title": "Eat something slowly",
-      "instruction": "One bite of anything. Chew 20 times. Notice texture, temperature, taste.",
-      "duration": 120,
-      "category": "grounding",
-      "directions": ["presence"],
-      "conditions": { "phase": "integration" },
-      "baseRelevance": 65
-    },
-    {
-      "id": "grounding-09",
-      "title": "Ice cube grip",
-      "instruction": "Hold an ice cube until it melts. Focus only on the sensation.",
-      "duration": 180,
-      "category": "grounding",
-      "directions": ["stability", "presence"],
-      "conditions": { "loadMatch": "high" },
-      "baseRelevance": 70
-    },
-    {
-      "id": "grounding-10",
-      "title": "Smell something familiar",
-      "instruction": "Find something with a familiar scent. Coffee, citrus, soap. Breathe it in deeply.",
-      "duration": 30,
-      "category": "grounding",
-      "directions": ["stability"],
-      "conditions": {},
-      "baseRelevance": 65
-    },
-    {
-      "id": "environment-01",
-      "title": "Ambient sound",
-      "instruction": "Put on headphones. Rain, brown noise, nature sounds. Let it wash over you for 5 minutes.",
-      "duration": 300,
-      "category": "environment",
-      "directions": ["stability", "creativity"],
-      "conditions": { "loadMatch": "high" },
-      "baseRelevance": 80
-    },
-    {
-      "id": "environment-02",
-      "title": "Remove one input",
-      "instruction": "Turn off one source of stimulation. Music, notifications, TV. Remove one input.",
-      "duration": 60,
-      "category": "environment",
-      "directions": ["clarity", "stability"],
-      "conditions": { "loadMatch": "high" },
-      "baseRelevance": 85
-    },
-    {
-      "id": "environment-03",
-      "title": "Light a candle",
-      "instruction": "Light a candle. Watch the flame for 60 seconds. Nothing else.",
-      "duration": 60,
-      "category": "environment",
-      "directions": ["presence", "stability"],
-      "conditions": { "phase": "integration" },
-      "baseRelevance": 70
-    },
-    {
-      "id": "environment-04",
-      "title": "Open a window",
-      "instruction": "Open a window. Notice the first sound you hear from outside.",
-      "duration": 60,
-      "category": "environment",
-      "directions": ["presence", "clarity"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "environment-05",
-      "title": "Phone in another room",
-      "instruction": "Put your phone in another room. Set a timer for 10 minutes. Be unreachable.",
-      "duration": 600,
-      "category": "environment",
-      "directions": ["clarity", "creativity"],
-      "conditions": { "loadMatch": "med" },
-      "baseRelevance": 80
-    },
-    {
-      "id": "environment-06",
-      "title": "Clear one surface",
-      "instruction": "Pick one surface. Clear everything off it. Put things where they belong.",
-      "duration": 300,
-      "category": "environment",
-      "directions": ["clarity"],
-      "conditions": { "energyRange": [3, 5] },
-      "baseRelevance": 70
-    },
-    {
-      "id": "environment-07",
-      "title": "Change rooms",
-      "instruction": "Move to a different room. Spend 5 minutes there. Notice the difference.",
-      "duration": 300,
-      "category": "environment",
-      "directions": ["creativity", "clarity"],
-      "conditions": {},
-      "baseRelevance": 65
-    },
-    {
-      "id": "environment-08",
-      "title": "Dim the lights",
-      "instruction": "Turn off overhead lights. Use only side lighting or candles for the next hour.",
-      "duration": 60,
-      "category": "environment",
-      "directions": ["stability", "creativity"],
-      "conditions": { "phase": "integration" },
-      "baseRelevance": 70
-    },
-    {
-      "id": "attention-01",
-      "title": "One sentence",
-      "instruction": "Write one sentence about what's present right now. Don't edit it.",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["clarity", "presence"],
-      "conditions": { "energyRange": [1, 3] },
-      "baseRelevance": 80
-    },
-    {
-      "id": "attention-02",
-      "title": "Listen for furthest sound",
-      "instruction": "Close your eyes. What's the furthest sound you can hear? Stay with it for 60 seconds.",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["presence"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "attention-03",
-      "title": "Single-task",
-      "instruction": "Choose one task. Do only that for the next 10 minutes. No tabs. No phone. One thing.",
-      "duration": 600,
-      "category": "attention",
-      "directions": ["clarity", "creativity"],
-      "conditions": { "loadMatch": "low" },
-      "baseRelevance": 85
-    },
-    {
-      "id": "attention-04",
-      "title": "Notice three colors",
-      "instruction": "Name three colors you can see right now. Where are they? Stay with each for 10 seconds.",
-      "duration": 30,
-      "category": "attention",
-      "directions": ["presence"],
-      "conditions": {},
-      "baseRelevance": 65
-    },
-    {
-      "id": "attention-05",
-      "title": "Intention reset",
-      "instruction": "Recall your intention for today. Say it out loud. Ask: am I moving toward it?",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["clarity"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 85
-    },
-    {
-      "id": "attention-06",
-      "title": "Body scan express",
-      "instruction": "Head to feet in 60 seconds. Where are you holding tension? Just notice.",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["presence", "stability"],
-      "conditions": {},
-      "baseRelevance": 80
-    },
-    {
-      "id": "attention-07",
-      "title": "Name your state",
-      "instruction": "What emotion is present? Name it. Say: 'I'm feeling [emotion]. That's what's here.'",
-      "duration": 30,
-      "category": "attention",
-      "directions": ["stability", "presence"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "attention-08",
-      "title": "Three things present",
-      "instruction": "Name three things you're grateful for right now. Be specific. No repeats from yesterday.",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["stability", "recovery"],
-      "conditions": { "phase": "integration" },
-      "baseRelevance": 70
-    },
-    {
-      "id": "social-01",
-      "title": "Text someone",
-      "instruction": "Text one person. Just to say hi. No ask. No agenda. Send it now.",
-      "duration": 60,
-      "category": "social",
-      "directions": ["stability", "recovery"],
-      "conditions": { "phase": "integration" },
-      "baseRelevance": 65
-    },
-    {
-      "id": "social-02",
-      "title": "Voice note",
-      "instruction": "Record a 30-second voice note to a friend. Don't send it. Just feel the connection.",
-      "duration": 60,
-      "category": "social",
-      "directions": ["stability"],
-      "conditions": {},
-      "baseRelevance": 60
-    },
-    {
-      "id": "social-03",
-      "title": "Eye contact",
-      "instruction": "Next person you see: make eye contact. Hold it for 3 seconds. Notice what arises.",
-      "duration": 30,
-      "category": "social",
-      "directions": ["presence", "stability"],
-      "conditions": {},
-      "baseRelevance": 55
-    },
-    {
-      "id": "social-04",
-      "title": "Call someone",
-      "instruction": "Call one person. If they don't answer, leave a message. 2 minutes max.",
-      "duration": 120,
-      "category": "social",
-      "directions": ["stability", "recovery"],
-      "conditions": { "loadMatch": "low" },
-      "baseRelevance": 60
-    },
-    {
-      "id": "movement-09",
-      "title": "Dance for 60 seconds",
-      "instruction": "Play one song. Move however your body wants. Nobody's watching.",
-      "duration": 60,
-      "category": "movement",
-      "directions": ["creativity", "stability"],
-      "conditions": { "energyRange": [2, 4] },
-      "baseRelevance": 70
-    },
-    {
-      "id": "grounding-11",
-      "title": "Bare feet on ground",
-      "instruction": "Take off your shoes. Stand on grass, dirt, or floor. 2 minutes. Feel the earth.",
-      "duration": 120,
-      "category": "grounding",
-      "directions": ["stability", "presence"],
-      "conditions": {},
-      "baseRelevance": 75
-    },
-    {
-      "id": "attention-09",
-      "title": "What wants to move?",
-      "instruction": "Ask your body: what wants to move right now? Do that movement for 30 seconds.",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["presence", "creativity"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 75
-    },
-    {
-      "id": "environment-09",
-      "title": "Face a window",
-      "instruction": "Position yourself facing natural light for the next 30 minutes.",
-      "duration": 60,
-      "category": "environment",
-      "directions": ["clarity"],
-      "conditions": {},
-      "baseRelevance": 70
-    },
-    {
-      "id": "breath-06",
-      "title": "Humming exhale",
-      "instruction": "Breathe in normally. Exhale while humming. Feel the vibration in your chest. 5 breaths.",
-      "duration": 90,
-      "category": "breath",
-      "directions": ["stability", "presence"],
-      "conditions": {},
-      "baseRelevance": 65
-    },
-    {
-      "id": "attention-10",
-      "title": "Draw without looking",
-      "instruction": "Pick up a pen. Draw something without looking at the paper. 60 seconds.",
-      "duration": 60,
-      "category": "attention",
-      "directions": ["creativity"],
-      "conditions": { "phase": "active" },
-      "baseRelevance": 60
-    }
-  ]
-}
+  {
+    "id": "cc-002",
+    "title": "Hands on stone",
+    "action": "Find the hardest surface near you. Press both palms flat. Feel the cold. Stay for 30 seconds.",
+    "duration_seconds": 30,
+    "category": "grounding",
+    "north_star_relevance": ["clarity", "calm", "connection"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-003",
+    "title": "Walk the edges",
+    "action": "Walk the perimeter of whatever room you're in. Touch each wall. Slow.",
+    "duration_seconds": 120,
+    "category": "movement",
+    "north_star_relevance": ["clarity", "exploration", "calm"],
+    "contraindicated_conditions": ["low_energy"]
+  },
+  {
+    "id": "cc-004",
+    "title": "Name five textures",
+    "action": "Without moving, identify five different textures you can see. Say them out loud.",
+    "duration_seconds": 60,
+    "category": "attention",
+    "north_star_relevance": ["clarity", "connection", "creativity"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-005",
+    "title": "Cold water reset",
+    "action": "Run cold water over your wrists for 20 seconds. Focus on the sensation. Nothing else.",
+    "duration_seconds": 30,
+    "category": "grounding",
+    "north_star_relevance": ["clarity", "calm"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-006",
+    "title": "Three deep exhales",
+    "action": "Inhale naturally. Then exhale twice as long as you inhaled. Three times. That's it.",
+    "duration_seconds": 45,
+    "category": "breath",
+    "north_star_relevance": ["calm", "clarity", "connection"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-007",
+    "title": "Peripheral vision",
+    "action": "Soften your gaze. Without moving your eyes, notice what's at the very edges of your vision. Hold for 60 seconds.",
+    "duration_seconds": 60,
+    "category": "attention",
+    "north_star_relevance": ["clarity", "calm", "exploration"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-008",
+    "title": "Shake it off",
+    "action": "Stand up. Shake your hands vigorously for 15 seconds. Then your arms. Then your whole body. Stop. Feel the stillness.",
+    "duration_seconds": 45,
+    "category": "movement",
+    "north_star_relevance": ["creativity", "exploration", "connection"],
+    "contraindicated_conditions": ["low_energy"]
+  },
+  {
+    "id": "cc-009",
+    "title": "Listen to the room",
+    "action": "Close your eyes. Count every distinct sound you can hear. Don't judge them. Just count.",
+    "duration_seconds": 90,
+    "category": "attention",
+    "north_star_relevance": ["calm", "connection", "clarity"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-010",
+    "title": "Write one sentence",
+    "action": "Grab something to write with. Write one sentence about what's present right now. Don't edit it.",
+    "duration_seconds": 60,
+    "category": "attention",
+    "north_star_relevance": ["creativity", "clarity", "exploration"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-011",
+    "title": "Feet on earth",
+    "action": "Take your shoes off. Stand on the ground — grass, dirt, tile, whatever's there. Feel the surface for 2 minutes.",
+    "duration_seconds": 120,
+    "category": "grounding",
+    "north_star_relevance": ["connection", "calm", "clarity"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-012",
+    "title": "Hum one note",
+    "action": "Pick any note. Hum it. Feel the vibration in your chest. Hold it as long as one breath allows. Repeat 3 times.",
+    "duration_seconds": 60,
+    "category": "breath",
+    "north_star_relevance": ["connection", "calm", "creativity"],
+    "contraindicated_conditions": ["social_large_group"]
+  },
+  {
+    "id": "cc-013",
+    "title": "Rearrange one thing",
+    "action": "Pick up one object near you and put it somewhere else. Deliberately. Notice how the space changes.",
+    "duration_seconds": 30,
+    "category": "environment",
+    "north_star_relevance": ["creativity", "clarity", "exploration"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-014",
+    "title": "Slow drink",
+    "action": "Get a glass of water. Drink it as slowly as you can. Feel the temperature. Feel it go down.",
+    "duration_seconds": 120,
+    "category": "grounding",
+    "north_star_relevance": ["calm", "connection", "clarity"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-015",
+    "title": "Look up",
+    "action": "Tilt your head back. Look at the ceiling or sky for 30 seconds. Notice what happens to your breathing.",
+    "duration_seconds": 30,
+    "category": "movement",
+    "north_star_relevance": ["exploration", "creativity", "calm"],
+    "contraindicated_conditions": []
+  },
+  {
+    "id": "cc-016",
+    "title": "Bilateral tap",
+    "action": "Cross your arms over your chest. Alternate tapping left and right shoulders. Slow, steady rhythm. 2 minutes.",
+    "duration_seconds": 120,
+    "category": "movement",
+    "north_star_relevance": ["calm", "connection"],
+    "contraindicated_conditions": []
+  }
+]

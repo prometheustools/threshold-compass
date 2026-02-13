@@ -1,0 +1,11 @@
+{
+  "name": "excellent_protocol_adherence",
+  "days": 70,
+  "seed": 404,
+  "substance": "psilocybin",
+  "base_dose": 0.075,
+  "schedule": "every_3_days",
+  "adherence": 0.98,
+  "variability": 0.05,
+  "sensitivity": 2
+}

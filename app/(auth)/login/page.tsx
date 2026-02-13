@@ -1,102 +1,118 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [schemaError, setSchemaError] = useState<string | null>(null)
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    // Auto-redirect to autologin for anonymous access
+    router.push('/autologin')
+  }, [router])
 
-    const { error } = await supabase.auth.signInWithPassword({
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error') === 'schema_missing') {
+      setSchemaError(
+        'Database setup is incomplete. Run supabase/schema.sql in your Supabase SQL Editor, then sign in again.'
+      )
+    }
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
-    });
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
 
     if (error) {
-      setError(error.message);
-      setLoading(false);
+      setError(error.message)
+      setLoading(false)
     } else {
-      router.push('/compass');
-      router.refresh();
+      setSent(true)
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <main className="min-h-screen bg-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-base flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-mono text-2xl uppercase tracking-wide text-ivory">
+          <h1 className="font-mono text-2xl text-ivory tracking-wider uppercase mb-2">
             Threshold Compass
           </h1>
-          <p className="text-ivory/60 mt-2 text-sm">
-            Precision instrument for microdosing
+          <p className="text-bone text-sm">
+            A precision instrument for your practice.
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-mono text-ivory/80 mb-1">
-              EMAIL
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-orange"
-              placeholder="you@example.com"
-              required
-            />
+        {sent ? (
+          <div className="bg-surface rounded-card p-6 border border-ember/20">
+            <p className="text-ivory text-center mb-2">Check your email.</p>
+            <p className="text-bone text-sm text-center">
+              We sent a magic link to <span className="text-orange">{email}</span>.
+              Click it to sign in.
+            </p>
           </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-mono text-ivory/80 mb-1">
-              PASSWORD
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-surface rounded-card p-6 border border-ember/20">
+            {schemaError && (
+              <p className="mb-4 rounded-button border border-status-elevated/40 bg-status-elevated/10 px-3 py-2 text-sm text-status-elevated">
+                {schemaError}
+              </p>
+            )}
+            <label className="block mb-4">
+              <span className="font-mono text-xs tracking-widest uppercase text-bone">
+                Email
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="practitioner@example.com"
+                required
+                className="mt-2 w-full bg-elevated border border-ember/30 text-ivory rounded-button px-4 py-3 min-h-[44px] focus:border-orange focus:ring-1 focus:ring-orange/30 focus:outline-none placeholder:text-ash transition-quick"
+                aria-label="Email address"
+              />
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-orange"
-              placeholder="••••••••"
-              required
-            />
-          </div>
 
-          {error && (
-            <div className="bg-red-900/20 border border-red-500/50 rounded-sm px-3 py-2 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
+            {error && (
+              <p className="text-status-elevated text-sm mb-4">{error}</p>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-orange text-black font-mono uppercase tracking-wide py-3 rounded-sm hover:bg-orange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading || !email}
+              className="w-full bg-orange text-base font-sans font-medium rounded-button py-3 min-h-[44px] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-settle"
+              aria-label="Send magic link"
+            >
+              {loading ? 'Sending...' : 'Send magic link'}
+            </button>
 
-        <p className="text-center text-ivory/60 text-sm mt-6">
-          No account?{' '}
-          <Link href="/signup" className="text-orange hover:underline">
-            Create one
-          </Link>
-        </p>
+            <p className="text-center mt-4 text-bone text-sm">
+              New here?{' '}
+              <Link href="/signup" className="text-orange hover:underline">
+                Create account
+              </Link>
+            </p>
+          </form>
+        )}
       </div>
-    </main>
-  );
+    </div>
+  )
 }

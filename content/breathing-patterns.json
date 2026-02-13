@@ -1,0 +1,42 @@
+[
+  {
+    "id": "bp-001",
+    "name": "Quick Reset",
+    "description": "Physiological sigh — fastest way to calm your nervous system",
+    "inhale": 4,
+    "hold_in": 0,
+    "exhale": 8,
+    "hold_out": 0,
+    "cycle_seconds": 12
+  },
+  {
+    "id": "bp-002",
+    "name": "Steady Calm",
+    "description": "Extended exhale for general regulation",
+    "inhale": 4,
+    "hold_in": 4,
+    "exhale": 6,
+    "hold_out": 2,
+    "cycle_seconds": 16
+  },
+  {
+    "id": "bp-003",
+    "name": "Balance",
+    "description": "Box breathing — equal parts, total stability",
+    "inhale": 4,
+    "hold_in": 4,
+    "exhale": 4,
+    "hold_out": 4,
+    "cycle_seconds": 16
+  },
+  {
+    "id": "bp-004",
+    "name": "Deepen",
+    "description": "4-7-8 pattern — when you need to slow way down",
+    "inhale": 4,
+    "hold_in": 7,
+    "exhale": 8,
+    "hold_out": 0,
+    "cycle_seconds": 19
+  }
+]

@@ -1,0 +1,12 @@
+id,title,priority,status,depends_on,packet
+T-001,Stabilize autologin and skip onboarding,P0,ready,,WP01
+T-002,Expand schema with idempotent migrations,P0,ready,,WP02
+T-003,Pre/post dose workflow + STI,P0,ready,T-002,WP03
+T-004,Protocol phase and dose-number engine,P0,ready,T-002,WP03
+T-005,Insights page + chart suite,P1,ready,T-003,WP04
+T-006,Pattern generation pipeline,P1,ready,T-003,WP04
+T-007,Offline queue + replay,P1,ready,T-003,WP05
+T-008,Compass visual consistency pass,P1,ready,T-001,WP06
+T-009,Reflections + reminders,P2,ready,T-003,WP07
+T-010,Import endpoint + versioned payloads,P2,ready,T-002,WP08
+T-011,Smoke and regression test harness,P0,ready,T-001|T-003|T-005,WP09

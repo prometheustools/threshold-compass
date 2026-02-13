@@ -1,137 +1,96 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 
 export default function SignupPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase.auth.signUp({
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
-    });
+    })
 
     if (error) {
-      setError(error.message);
-      setLoading(false);
+      setError(error.message)
+      setLoading(false)
     } else {
-      router.push('/onboarding');
+      setSent(true)
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <main className="min-h-screen bg-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-base flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-mono text-2xl uppercase tracking-wide text-ivory">
-            Create Account
+          <h1 className="font-mono text-2xl text-ivory tracking-wider uppercase mb-2">
+            Threshold Compass
           </h1>
-          <p className="text-ivory/60 mt-2 text-sm">
-            Begin your precision microdosing journey
+          <p className="text-bone text-sm">
+            Begin calibrating your practice.
           </p>
         </div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-mono text-ivory/80 mb-1">
-              EMAIL
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-orange"
-              placeholder="you@example.com"
-              required
-            />
+        {sent ? (
+          <div className="bg-surface rounded-card p-6 border border-ember/20">
+            <p className="text-ivory text-center mb-2">Check your email.</p>
+            <p className="text-bone text-sm text-center">
+              We sent a magic link to <span className="text-orange">{email}</span>.
+              Click it to get started.
+            </p>
           </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-mono text-ivory/80 mb-1">
-              PASSWORD
+        ) : (
+          <form onSubmit={handleSubmit} className="bg-surface rounded-card p-6 border border-ember/20">
+            <label className="block mb-4">
+              <span className="font-mono text-xs tracking-widest uppercase text-bone">
+                Email
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="practitioner@example.com"
+                required
+                className="mt-2 w-full bg-elevated border border-ember/30 text-ivory rounded-button px-4 py-3 min-h-[44px] focus:border-orange focus:ring-1 focus:ring-orange/30 focus:outline-none placeholder:text-ash transition-quick"
+                aria-label="Email address"
+              />
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-orange"
-              placeholder="Min 8 characters"
-              required
-            />
-          </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-mono text-ivory/80 mb-1">
-              CONFIRM PASSWORD
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-charcoal border border-ivory/20 rounded-sm px-3 py-3 text-ivory placeholder:text-ivory/40 focus:outline-none focus:border-orange"
-              placeholder="••••••••"
-              required
-            />
-          </div>
+            {error && (
+              <p className="text-status-elevated text-sm mb-4">{error}</p>
+            )}
 
-          {error && (
-            <div className="bg-red-900/20 border border-red-500/50 rounded-sm px-3 py-2 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
+            <button
+              type="submit"
+              disabled={loading || !email}
+              className="w-full bg-orange text-base font-sans font-medium rounded-button py-3 min-h-[44px] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-settle"
+              aria-label="Send magic link"
+            >
+              {loading ? 'Sending...' : 'Send magic link'}
+            </button>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-orange text-black font-mono uppercase tracking-wide py-3 rounded-sm hover:bg-orange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Creating account...' : 'Create Account'}
-          </button>
-        </form>
-
-        <p className="text-center text-ivory/60 text-sm mt-6">
-          Already have an account?{' '}
-          <Link href="/login" className="text-orange hover:underline">
-            Sign in
-          </Link>
-        </p>
-
-        <p className="text-center text-ivory/40 text-xs mt-4 px-4">
-          By creating an account, you acknowledge that this is an educational tool,
-          not medical advice.
-        </p>
+            <p className="text-center mt-4 text-bone text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="text-orange hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </form>
+        )}
       </div>
-    </main>
-  );
+    </div>
+  )
 }

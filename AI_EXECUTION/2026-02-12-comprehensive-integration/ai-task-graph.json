@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-02-12",
+  "target_repo": "threshold-compass",
+  "nodes": [
+    {"id": "WP02", "name": "Schema and RLS", "priority": "P0"},
+    {"id": "WP01", "name": "Auth and Onboarding Skip", "priority": "P0"},
+    {"id": "WP03", "name": "Protocol and Logging", "priority": "P0"},
+    {"id": "WP06", "name": "Visual UX", "priority": "P1"},
+    {"id": "WP04", "name": "Insights and Patterns", "priority": "P1"},
+    {"id": "WP05", "name": "Offline and PWA", "priority": "P1"},
+    {"id": "WP07", "name": "Notifications and Reflections", "priority": "P2"},
+    {"id": "WP08", "name": "Import Export", "priority": "P2"},
+    {"id": "WP09", "name": "Testing and Release", "priority": "P0"}
+  ],
+  "edges": [
+    {"from": "WP02", "to": "WP03"},
+    {"from": "WP02", "to": "WP04"},
+    {"from": "WP02", "to": "WP08"},
+    {"from": "WP01", "to": "WP06"},
+    {"from": "WP03", "to": "WP04"},
+    {"from": "WP03", "to": "WP05"},
+    {"from": "WP03", "to": "WP07"},
+    {"from": "WP01", "to": "WP09"},
+    {"from": "WP03", "to": "WP09"},
+    {"from": "WP04", "to": "WP09"}
+  ]
+}

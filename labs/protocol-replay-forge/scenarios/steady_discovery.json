@@ -1,0 +1,11 @@
+{
+  "name": "steady_discovery",
+  "days": 56,
+  "seed": 101,
+  "substance": "psilocybin",
+  "base_dose": 0.08,
+  "schedule": "every_3_days",
+  "adherence": 0.92,
+  "variability": 0.08,
+  "sensitivity": 3
+}

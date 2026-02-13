@@ -1,300 +1,327 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { calculateCarryover } from '@/lib/algorithms/carryover';
-import type { DoseLog, User, CarryoverTier } from '@/types';
+'use client'
 
-// Tier colors
-const TIER_COLORS: Record<CarryoverTier, string> = {
-  clear: 'text-green-400',
-  mild: 'text-yellow-400',
-  moderate: 'text-orange-400',
-  high: 'text-red-400',
-};
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import type { Batch, CarryoverResult, ThresholdRange, User } from '@/types'
+import { createClient } from '@/lib/supabase/client'
+import { resolveCurrentUserId } from '@/lib/auth/anonymous'
+import { calculateCarryover } from '@/lib/algorithms/carryover'
+import { getSchemaSetupMessage, isSchemaCacheTableMissingError } from '@/lib/supabase/errors'
+import { useAppStore } from '@/store'
+import CompassView from '@/components/compass/CompassView'
 
-const TIER_BAR_COLORS: Record<CarryoverTier, string> = {
-  clear: 'bg-green-400',
-  mild: 'bg-yellow-400',
-  moderate: 'bg-orange-400',
-  high: 'bg-red-400',
-};
+const DEFAULT_CARRYOVER: CarryoverResult = {
+  percentage: 0,
+  tier: 'clear',
+  effective_multiplier: 1,
+  hours_to_clear: null,
+  message: 'Full sensitivity expected.',
+}
 
-export default async function CompassPage() {
-  const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+const PREVIEW_STORAGE_KEY = 'compass_preview_mode'
 
-  if (!authUser) {
-    redirect('/login');
+const PREVIEW_USER: User = {
+  id: 'preview-user',
+  email: 'preview@local',
+  substance_type: 'psilocybin',
+  sensitivity: 3,
+  north_star: 'clarity',
+  guidance_level: 'guided',
+  menstrual_tracking: false,
+  emergency_contact: null,
+  onboarding_complete: false,
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+}
+
+const PREVIEW_BATCH: Batch = {
+  id: 'preview-batch',
+  user_id: 'preview-user',
+  name: 'Demo Batch',
+  substance_type: 'psilocybin',
+  form: 'ground',
+  estimated_potency: 'medium',
+  dose_unit: 'mg',
+  supplements: null,
+  source_notes: 'Preview mode sample data',
+  date_acquired: null,
+  is_active: true,
+  calibration_status: 'calibrated',
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z',
+}
+
+const PREVIEW_RANGE: ThresholdRange = {
+  id: 'preview-range',
+  user_id: 'preview-user',
+  batch_id: 'preview-batch',
+  floor_dose: 0.08,
+  sweet_spot: 0.14,
+  ceiling_dose: 0.2,
+  confidence: 72,
+  qualifier: 'Preview estimate only',
+  doses_used: 8,
+  calculated_at: '2026-01-01T00:00:00.000Z',
+}
+
+const PREVIEW_CARRYOVER: CarryoverResult = {
+  percentage: 9,
+  tier: 'mild',
+  effective_multiplier: 0.91,
+  hours_to_clear: 18,
+  message: 'Mild carryover expected from recent dosing.',
+}
+
+function getErrorMessage(error: unknown): string {
+  if (isSchemaCacheTableMissingError(error)) {
+    return getSchemaSetupMessage()
   }
 
-  // Fetch user profile
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authUser.id)
-    .single();
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string') {
+      return message
+    }
+  }
 
-  // Fetch recent doses (last 14 days)
-  const fourteenDaysAgo = new Date();
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  return 'Unable to load Compass data right now.'
+}
 
-  const { data: recentDoses } = await supabase
-    .from('dose_logs')
-    .select('*')
-    .eq('user_id', authUser.id)
-    .gte('timestamp', fourteenDaysAgo.toISOString())
-    .order('timestamp', { ascending: false });
+export default function CompassPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [user, setUserState] = useState<User | null>(null)
+  const [activeBatch, setActiveBatchState] = useState<Batch | null>(null)
+  const [carryover, setCarryoverState] = useState<CarryoverResult>(DEFAULT_CARRYOVER)
+  const [thresholdRange, setThresholdRangeState] = useState<ThresholdRange | null>(null)
+  const [discoveryDoseNumber, setDiscoveryDoseNumber] = useState<number | null>(null)
+  const [previewMode, setPreviewMode] = useState(false)
 
-  // Calculate carryover (with defaults if no user profile yet)
-  const defaultUser: User = {
-    id: authUser.id,
-    email: authUser.email || '',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    onboarding_complete: false,
-    guidance_level: 'guided',
-    default_logging_tier: 2,
-    sensitivity: {
-      caffeine: 3,
-      cannabis: null,
-      bodyAwareness: 3,
-      emotionalReactivity: 3,
-      medications: [],
-    },
-    primary_substance: 'psilocybin',
-    notifications: {
-      activationCheck: true,
-      signalWindow: true,
-      integration: true,
-      endOfDay: true,
-      followUp24h: false,
-      followUp72h: false,
-      method: 'push',
-    },
-    sharing_level: 'local',
-    menstrual_tracking: false,
-    cycle_day: null,
-    emergency_contact: null,
-    north_star: { type: 'clarity', custom: null },
-  };
+  const setUser = useAppStore((state) => state.setUser)
+  const setActiveBatch = useAppStore((state) => state.setActiveBatch)
+  const setCarryover = useAppStore((state) => state.setCarryover)
+  const setThresholdRange = useAppStore((state) => state.setThresholdRange)
 
-  const carryover = calculateCarryover(
-    (recentDoses as DoseLog[]) || [],
-    (userProfile as User) || defaultUser
-  );
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const queryPreviewMode = params.get('preview') === '1'
+    if (queryPreviewMode) {
+      try {
+        window.localStorage.setItem(PREVIEW_STORAGE_KEY, '1')
+      } catch {
+        // no-op
+      }
+      setPreviewMode(true)
+      return
+    }
 
-  // Get latest dose for display
-  const latestDose = recentDoses?.[0] as DoseLog | undefined;
+    try {
+      setPreviewMode(window.localStorage.getItem(PREVIEW_STORAGE_KEY) === '1')
+    } catch {
+      setPreviewMode(false)
+    }
+  }, [])
 
-  // Fetch all doses for protocol progress
-  const { data: allDoses } = await supabase
-    .from('dose_logs')
-    .select('id')
-    .eq('user_id', authUser.id);
+  useEffect(() => {
+    let active = true
 
-  const totalDoses = allDoses?.length || 0;
-  const currentPhase = totalDoses <= 4 ? 'baseline' : 'context';
-  const protocolComplete = totalDoses >= 10;
+    const loadCompassData = async () => {
+      setLoading(true)
+      setError(null)
 
-  // Milestones: 1, 4 (critical), 7, 10
-  const milestones = [
-    { dose: 1, label: 'First Flame', critical: false },
-    { dose: 4, label: 'Baseline', critical: true },
-    { dose: 7, label: 'Halfway', critical: false },
-    { dose: 10, label: 'Complete', critical: false },
-  ];
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const queryPreviewMode = params.get('preview') === '1'
+        const storedPreviewMode =
+          typeof window !== 'undefined' && window.localStorage.getItem(PREVIEW_STORAGE_KEY) === '1'
+        if (queryPreviewMode || storedPreviewMode) {
+          if (!active) {
+            return
+          }
+
+          setPreviewMode(true)
+          setUserState(PREVIEW_USER)
+          setActiveBatchState(PREVIEW_BATCH)
+          setCarryoverState(PREVIEW_CARRYOVER)
+          setThresholdRangeState(PREVIEW_RANGE)
+          setDiscoveryDoseNumber(null)
+
+          setUser(PREVIEW_USER)
+          setActiveBatch(PREVIEW_BATCH)
+          setCarryover(PREVIEW_CARRYOVER)
+          setThresholdRange(PREVIEW_RANGE)
+          return
+        }
+
+        const supabase = createClient()
+        const anonUserId = await resolveCurrentUserId(supabase)
+        
+        if (!anonUserId) {
+          router.push('/autologin')
+          return
+        }
+
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', anonUserId)
+          .maybeSingle()
+
+        if (userError && isSchemaCacheTableMissingError(userError, 'users')) {
+          throw userError
+        }
+
+        if (userError) {
+          throw userError
+        }
+
+        let typedUser: User | null = (userData as User | null) ?? null
+        if (!typedUser) {
+          const { data: insertedUser, error: insertUserError } = await supabase
+            .from('users')
+            .insert({
+              id: anonUserId,
+              email: `anon_${anonUserId.slice(0, 8)}@local.invalid`,
+              onboarding_complete: false,
+            })
+            .select('*')
+            .single()
+
+          if (insertUserError) {
+            throw insertUserError
+          }
+
+          typedUser = insertedUser as User
+        }
+
+        if (!typedUser?.onboarding_complete) {
+          router.push('/onboarding')
+          return
+        }
+
+        const { data: batchRows, error: batchError } = await supabase
+          .from('batches')
+          .select('*')
+          .eq('user_id', anonUserId)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+
+        if (batchError) {
+          throw batchError
+        }
+
+        const typedBatch = (batchRows?.[0] as Batch | undefined) ?? null
+        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+
+        const { data: doseRows, error: doseError } = await supabase
+          .from('dose_logs')
+          .select('amount,dosed_at')
+          .eq('user_id', anonUserId)
+          .gte('dosed_at', fourteenDaysAgo)
+          .order('dosed_at', { ascending: false })
+
+        if (doseError) {
+          throw doseError
+        }
+
+        const typedDoseRows = (doseRows ?? []) as Array<{ amount: number; dosed_at: string }>
+        const nextCarryover = calculateCarryover(typedDoseRows, typedUser.substance_type)
+
+        let nextThresholdRange: ThresholdRange | null = null
+        let nextDiscoveryDoseNumber: number | null = null
+
+        if (typedBatch) {
+          const { data: rangeData, error: rangeError } = await supabase
+            .from('threshold_ranges')
+            .select('*')
+            .eq('user_id', anonUserId)
+            .eq('batch_id', typedBatch.id)
+            .maybeSingle()
+
+          if (rangeError) {
+            throw rangeError
+          }
+
+          nextThresholdRange = (rangeData as ThresholdRange | null) ?? null
+
+          if (typedBatch.calibration_status === 'calibrating') {
+            const { data: discoveryRows, error: discoveryError } = await supabase
+              .from('dose_logs')
+              .select('discovery_dose_number')
+              .eq('user_id', anonUserId)
+              .eq('batch_id', typedBatch.id)
+              .not('discovery_dose_number', 'is', null)
+              .order('discovery_dose_number', { ascending: false })
+              .limit(1)
+
+            if (discoveryError) {
+              throw discoveryError
+            }
+
+            const maxLoggedDiscoveryDose = discoveryRows?.[0]?.discovery_dose_number ?? 0
+            nextDiscoveryDoseNumber = Math.min(10, maxLoggedDiscoveryDose + 1)
+          }
+        }
+
+        if (!active) {
+          return
+        }
+
+        setUserState(typedUser)
+        setActiveBatchState(typedBatch)
+        setCarryoverState(nextCarryover)
+        setThresholdRangeState(nextThresholdRange)
+        setDiscoveryDoseNumber(nextDiscoveryDoseNumber)
+
+        setUser(typedUser)
+        setActiveBatch(typedBatch)
+        setCarryover(nextCarryover)
+        setThresholdRange(nextThresholdRange)
+      } catch (loadError) {
+        if (!active) {
+          return
+        }
+
+        setError(getErrorMessage(loadError))
+      } finally {
+        if (!active) {
+          return
+        }
+
+        setLoading(false)
+      }
+    }
+
+    void loadCompassData()
+
+    return () => {
+      active = false
+    }
+  }, [router, setActiveBatch, setCarryover, setThresholdRange, setUser])
 
   return (
-    <main className="min-h-screen bg-black text-ivory p-6">
-      {/* Header */}
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="font-mono text-xl uppercase tracking-wide">Compass</h1>
-        <Link
-          href="/drift"
-          className="bg-violet/20 border border-violet/50 px-3 py-1 rounded-sm text-violet text-sm font-mono hover:bg-violet/30 transition-colors"
-        >
-          DRIFT
-        </Link>
-      </header>
-
-      {/* Protocol Progress */}
-      <section className="mb-8">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="font-mono text-sm uppercase tracking-wide text-ivory/60">
-            {protocolComplete ? 'Protocol Complete' : currentPhase === 'baseline' ? 'Phase 1: Baseline' : 'Phase 2: Context'}
-          </h2>
-          <span className="font-mono text-sm text-ivory/40">
-            {totalDoses}/10 doses
-          </span>
-        </div>
-        <div className="flex gap-1">
-          {Array.from({ length: 10 }, (_, i) => {
-            const doseNum = i + 1;
-            const milestone = milestones.find(m => m.dose === doseNum);
-            const isCompleted = totalDoses >= doseNum;
-            const isCurrent = totalDoses + 1 === doseNum;
-            const isCritical = milestone?.critical;
-
-            return (
-              <div
-                key={doseNum}
-                className="relative flex-1"
-              >
-                <div
-                  className={`h-2 rounded-sm transition-all ${
-                    isCompleted
-                      ? doseNum <= 4
-                        ? 'bg-violet'
-                        : 'bg-orange'
-                      : isCurrent
-                      ? 'bg-ivory/30 animate-pulse'
-                      : 'bg-ivory/10'
-                  } ${isCritical && isCompleted ? 'ring-2 ring-orange ring-offset-1 ring-offset-black' : ''}`}
-                />
-                {milestone && (
-                  <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs whitespace-nowrap ${
-                    isCompleted ? 'text-ivory/60' : 'text-ivory/30'
-                  }`}>
-                    {isCritical ? '◆' : '·'}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {totalDoses > 0 && totalDoses < 10 && (
-          <p className="text-ivory/40 text-xs mt-4 text-center">
-            {totalDoses === 4
-              ? '🎯 Baseline complete! Moving to context exploration.'
-              : totalDoses < 4
-              ? `${4 - totalDoses} more dose${4 - totalDoses > 1 ? 's' : ''} until baseline established`
-              : `${10 - totalDoses} more dose${10 - totalDoses > 1 ? 's' : ''} to complete protocol`}
-          </p>
-        )}
-        {protocolComplete && (
-          <p className="text-green-400 text-xs mt-4 text-center font-mono uppercase">
-            ✓ Your threshold range is established
-          </p>
-        )}
-      </section>
-
-      {/* Carryover Status */}
-      <section className="mb-8">
-        <div className="bg-charcoal border border-ivory/10 rounded-sm p-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-mono text-sm text-ivory/60 uppercase tracking-wide">
-              Carryover
-            </span>
-            <span className={`text-2xl font-mono uppercase ${TIER_COLORS[carryover.tier]}`}>
-              {carryover.tier}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex-1 h-2 bg-ivory/10 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 ${TIER_BAR_COLORS[carryover.tier]}`}
-                style={{ width: `${carryover.score}%` }}
-              />
-            </div>
-            <span className="font-mono text-sm text-ivory/60">{carryover.score}%</span>
-          </div>
-          <p className="text-ivory/50 text-sm">
-            {carryover.recommendation}
-          </p>
-        </div>
-      </section>
-
-      {/* Quick Actions */}
-      <section className="grid grid-cols-2 gap-3 mb-8">
-        <Link
-          href="/log"
-          className="bg-orange text-black font-mono uppercase tracking-wide py-4 rounded-sm text-center hover:bg-orange/90 transition-colors"
-        >
-          Log Dose
-        </Link>
-        <Link
-          href="/log?type=checkin"
-          className="bg-charcoal border border-ivory/20 font-mono uppercase tracking-wide py-4 rounded-sm text-center text-ivory hover:bg-charcoal/80 transition-colors"
-        >
-          Check In
-        </Link>
-      </section>
-
-      {/* Course Correction */}
-      <section className="mb-8">
-        <h2 className="font-mono text-sm uppercase tracking-wide text-ivory/60 mb-3">
-          Course Correction
-        </h2>
-        <div className="bg-charcoal border border-ivory/10 rounded-sm p-4">
-          <h3 className="text-lg mb-2">Stand up. Roll your shoulders back.</h3>
-          <p className="text-ivory/50 text-sm mb-3">
-            Hold this position for 10 seconds. Notice the shift.
-          </p>
-          <div className="flex gap-2">
-            <button className="flex-1 py-2 text-sm border border-ivory/20 rounded-sm text-ivory/60 hover:bg-ivory/5">
-              Skip
-            </button>
-            <button className="flex-1 py-2 text-sm bg-violet text-black font-mono uppercase rounded-sm">
-              Done
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Activity */}
-      <section>
-        <h2 className="font-mono text-sm uppercase tracking-wide text-ivory/60 mb-3">
-          Recent
-        </h2>
-        <div className="space-y-2">
-          {recentDoses && recentDoses.length > 0 ? (
-            recentDoses.slice(0, 5).map((dose) => {
-              const d = dose as DoseLog;
-              const doseDate = new Date(d.timestamp);
-              const isToday = doseDate.toDateString() === new Date().toDateString();
-              const dateStr = isToday ? 'Today' : doseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-              const timeStr = doseDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-              return (
-                <div key={d.id} className="bg-charcoal/50 border border-ivory/10 rounded-sm p-3 flex justify-between items-center">
-                  <div>
-                    <div className="text-sm font-mono">{d.amount}g</div>
-                    <div className="text-ivory/50 text-xs">{dateStr} at {timeStr}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-ivory/60">{d.food_state}</div>
-                    {d.effective_dose && (
-                      <div className="text-xs text-ivory/40">eff: {d.effective_dose.toFixed(3)}g</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="bg-charcoal/50 border border-ivory/10 rounded-sm p-3 flex justify-between items-center">
-              <div>
-                <div className="text-sm">No recent doses</div>
-                <div className="text-ivory/50 text-xs">Log your first dose to begin</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-ivory/10 p-4 flex justify-around">
-        <Link href="/compass" className="text-orange font-mono text-xs uppercase">
-          Compass
-        </Link>
-        <Link href="/log" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Log
-        </Link>
-        <Link href="/insights" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Insights
-        </Link>
-        <Link href="/settings" className="text-ivory/60 font-mono text-xs uppercase hover:text-ivory">
-          Settings
-        </Link>
-      </nav>
-    </main>
-  );
+    <CompassView
+      loading={loading}
+      error={error}
+      previewMode={previewMode}
+      user={user}
+      activeBatch={activeBatch}
+      carryover={carryover}
+      thresholdRange={thresholdRange}
+      discoveryDoseNumber={discoveryDoseNumber}
+      onLogDose={() => router.push('/log')}
+      onSettle={() => router.push('/settle')}
+      onResumeSetup={() => {
+        try {
+          window.localStorage.removeItem(PREVIEW_STORAGE_KEY)
+        } catch {
+          // no-op
+        }
+        setPreviewMode(false)
+        router.push('/onboarding')
+      }}
+    />
+  )
 }

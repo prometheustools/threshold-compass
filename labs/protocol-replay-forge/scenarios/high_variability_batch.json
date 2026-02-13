@@ -1,0 +1,11 @@
+{
+  "name": "high_variability_batch",
+  "days": 63,
+  "seed": 303,
+  "substance": "psilocybin",
+  "base_dose": 0.09,
+  "schedule": "every_3_days",
+  "adherence": 0.9,
+  "variability": 0.32,
+  "sensitivity": 3
+}

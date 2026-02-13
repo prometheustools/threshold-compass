@@ -1,0 +1,11 @@
+{
+  "name": "overeager_escalation",
+  "days": 42,
+  "seed": 202,
+  "substance": "psilocybin",
+  "base_dose": 0.1,
+  "schedule": "every_2_days",
+  "adherence": 0.88,
+  "variability": 0.15,
+  "sensitivity": 4
+}

@@ -10,6 +10,7 @@
     "schema:check": "bash ./scripts/ensure-supabase-schema.sh --check-only",
     "schema:ensure": "bash ./scripts/ensure-supabase-schema.sh",
     "upgrade:readiness": "bash ./scripts/upgrade-readiness.sh",
+    "release:check": "bash ./scripts/release-check.sh",
     "sync:online": "bash ./scripts/online-sync.sh"
   },
   "dependencies": {

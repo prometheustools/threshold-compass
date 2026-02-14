@@ -33,6 +33,16 @@ pnpm run upgrade:readiness
 
 It checks for high-risk legacy patterns (for example `next/router`, legacy pages-router data methods, and `ReactDOM.render`).
 
+## Full Release Gate
+
+Run:
+
+```bash
+pnpm run release:check
+```
+
+This runs `lint`, `build`, `upgrade:readiness`, and production `audit`, then runs `schema:check` when DB credentials are present.
+
 ## When Network Is Available
 
 Run:

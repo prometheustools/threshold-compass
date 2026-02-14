@@ -3,13 +3,13 @@
 > bash ./scripts/upgrade-readiness.sh
 
 Phase 4 Framework Upgrade Readiness
-Timestamp (UTC): 2026-02-14T07:06:29Z
-Branch: phase4/next15-react19-prep
+Timestamp (UTC): 2026-02-14T19:31:09Z
+Branch: main
 Node: v24.13.0
 pnpm: 10.26.0
-next: 14.2.18
-react: ^18.3.1
-react-dom: ^18.3.1
+next: 15.5.10
+react: ^19.2.0
+react-dom: ^19.2.0
 
 [critical] Legacy pages-router import: 0 match(es)
 [critical] Legacy data methods: 0 match(es)

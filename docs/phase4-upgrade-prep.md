@@ -1,7 +1,7 @@
 # Phase 4 Framework Upgrade Prep
 
 Date: 2026-02-14  
-Branch: `phase4/next15-react19-prep`
+Current branch baseline: `main`
 
 ## Scope
 
@@ -11,9 +11,15 @@ Prepare for:
 3. `react-dom` 18 -> 19
 
 This repo currently uses:
-- `next`: `14.2.18`
-- `react`: `^18.3.1`
-- `react-dom`: `^18.3.1`
+- `next`: `15.5.10`
+- `react`: `^19.2.0`
+- `react-dom`: `^19.2.0`
+
+## Status
+
+- `next` upgraded from `14.2.18` to `15.5.10`
+- `react` and `react-dom` upgraded from `18.3.1` to `19.2.0`
+- `pnpm audit --prod` is clean (0 vulnerabilities)
 
 ## Readiness Command
 

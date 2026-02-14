@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "schema:ensure": "bash ./scripts/ensure-supabase-schema.sh",
-    "upgrade:readiness": "bash ./scripts/upgrade-readiness.sh"
+    "upgrade:readiness": "bash ./scripts/upgrade-readiness.sh",
+    "sync:online": "bash ./scripts/online-sync.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",

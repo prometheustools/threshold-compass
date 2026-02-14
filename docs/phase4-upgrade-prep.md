@@ -25,6 +25,20 @@ pnpm run upgrade:readiness
 
 It checks for high-risk legacy patterns (for example `next/router`, legacy pages-router data methods, and `ReactDOM.render`).
 
+## When Network Is Available
+
+Run:
+
+```bash
+pnpm run sync:online
+```
+
+This will:
+1. Push `main` and `phase4/next15-react19-prep`
+2. Run production audit
+3. Show outdated dependencies
+4. Re-run readiness + lint + build
+
 ## Recommended Sequence
 
 1. Lock baseline:

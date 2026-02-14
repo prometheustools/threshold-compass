@@ -36,11 +36,7 @@ export default function BreathingGuide({ pattern }: BreathingGuideProps) {
     const el = circleRef.current
     
     const total = cycle_seconds * 1000
-    const inhaleMs = inhale * 1000
-    const holdInMs = hold_in * 1000
-    const exhaleMs = exhale * 1000
-    
-    let startTime = Date.now()
+    const startTime = Date.now()
     
     const animate = () => {
       const elapsed = (Date.now() - startTime) % total

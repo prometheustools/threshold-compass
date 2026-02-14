@@ -32,7 +32,7 @@ run_check() {
 
   matches="$(
     rg -n --no-heading "$pattern" \
-      app components lib store types middleware.ts next.config.js \
+      app components lib store types proxy.ts middleware.ts next.config.js \
       2>/dev/null || true
   )"
   if [[ -n "$matches" ]]; then

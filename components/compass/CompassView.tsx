@@ -42,18 +42,20 @@ export default function CompassView({
   onSettle,
   onResumeSetup,
 }: CompassViewProps) {
-  const [showFirstVisit, setShowFirstVisit] = useState(false)
+  const [showFirstVisit] = useState(() => {
+    if (typeof window === 'undefined') return false
+    if (previewMode) return false
+    return !window.localStorage.getItem(FIRST_VISIT_KEY)
+  })
   const unit: 'g' | 'µg' = user?.substance_type === 'lsd' ? 'µg' : 'g'
   const isCalibrating = activeBatch?.calibration_status === 'calibrating'
   const isCalibrated = activeBatch?.calibration_status === 'calibrated'
 
   useEffect(() => {
-    const hasVisited = localStorage.getItem(FIRST_VISIT_KEY)
-    if (!hasVisited && !previewMode) {
-      setShowFirstVisit(true)
+    if (showFirstVisit) {
       localStorage.setItem(FIRST_VISIT_KEY, 'true')
     }
-  }, [previewMode])
+  }, [showFirstVisit])
 
   // Determine active dose hours (if user has dosed today)
   const activeDoseHours = useMemo(() => {

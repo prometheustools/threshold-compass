@@ -11,21 +11,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [schemaError, setSchemaError] = useState<string | null>(null)
+  const [schemaError] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error') === 'schema_missing') {
+      return 'Database setup is incomplete. Run supabase/schema.sql in your Supabase SQL Editor, then sign in again.'
+    }
+    return null
+  })
 
   useEffect(() => {
     // Auto-redirect to autologin for anonymous access
     router.push('/autologin')
   }, [router])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('error') === 'schema_missing') {
-      setSchemaError(
-        'Database setup is incomplete. Run supabase/schema.sql in your Supabase SQL Editor, then sign in again.'
-      )
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

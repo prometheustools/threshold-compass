@@ -3,11 +3,11 @@
 > bash ./scripts/upgrade-readiness.sh
 
 Phase 4 Framework Upgrade Readiness
-Timestamp (UTC): 2026-02-14T19:31:09Z
+Timestamp (UTC): 2026-02-14T19:54:05Z
 Branch: main
 Node: v24.13.0
 pnpm: 10.26.0
-next: 15.5.10
+next: 16.1.6
 react: ^19.2.0
 react-dom: ^19.2.0
 

@@ -80,7 +80,7 @@ export default function HistoryPage() {
 
         const doseIds = (doseRows ?? []).map((d: Record<string, unknown>) => d.id as string)
 
-        let checkInMap: Record<string, CheckIn> = {}
+        const checkInMap: Record<string, CheckIn> = {}
 
         if (doseIds.length > 0) {
           const { data: checkInRows } = await supabase

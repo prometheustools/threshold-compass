@@ -49,20 +49,16 @@ export default function CompassVisualization({
   unit,
   calibrationStatus,
 }: CompassVisualizationProps) {
-  const [hasAnimated, setHasAnimated] = useState(false)
   const [animationPhase, setAnimationPhase] = useState<'searching' | 'found' | 'settled'>('searching')
 
   useEffect(() => {
-    if (!hasAnimated) {
-      setHasAnimated(true)
-      const searchTimeout = setTimeout(() => setAnimationPhase('found'), 800)
-      const settleTimeout = setTimeout(() => setAnimationPhase('settled'), 1800)
-      return () => {
-        clearTimeout(searchTimeout)
-        clearTimeout(settleTimeout)
-      }
+    const searchTimeout = setTimeout(() => setAnimationPhase('found'), 800)
+    const settleTimeout = setTimeout(() => setAnimationPhase('settled'), 1800)
+    return () => {
+      clearTimeout(searchTimeout)
+      clearTimeout(settleTimeout)
     }
-  }, [hasAnimated])
+  }, [])
 
   const centerText = useMemo(() => {
     switch (state) {
@@ -105,7 +101,7 @@ export default function CompassVisualization({
       return -180
     }
     if (animationPhase === 'found') {
-      return baseRotation + (Math.random() - 0.5) * 30
+      return baseRotation + 10
     }
     return baseRotation
   }, [animationPhase, baseRotation])
@@ -126,8 +122,6 @@ export default function CompassVisualization({
   const glowIntensity = animationPhase === 'found' ? 1 : animationPhase === 'searching' ? 0.3 : 0.8
 
   const hasThresholdMarkers = state === 'calibrated_rest' || state === 'calibrated_active'
-
-  const gradientId = `compass-gradient-${state}`
 
   return (
     <div className="relative w-full max-w-sm mx-auto aspect-square">

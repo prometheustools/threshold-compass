@@ -11,15 +11,17 @@ Prepare for:
 3. `react-dom` 18 -> 19
 
 This repo currently uses:
-- `next`: `15.5.10`
+- `next`: `16.1.6`
 - `react`: `^19.2.0`
 - `react-dom`: `^19.2.0`
 
 ## Status
 
-- `next` upgraded from `14.2.18` to `15.5.10`
+- `next` upgraded from `14.2.18` to `15.5.10` and then `16.1.6`
 - `react` and `react-dom` upgraded from `18.3.1` to `19.2.0`
 - `pnpm audit --prod` is clean (0 vulnerabilities)
+- Next 16 lint stack migrated to ESLint 9 + flat config (`eslint.config.mjs`)
+- `middleware.ts` moved to `proxy.ts` (Next 16 convention)
 
 ## Readiness Command
 
@@ -57,9 +59,9 @@ pnpm run upgrade:readiness
 2. Upgrade Next to 15 and run official Next codemod(s).
 3. Fix compile/type/runtime issues and re-run baseline checks.
 4. Upgrade React + React DOM to 19 and run official React codemod(s).
-5. Re-run baseline checks and smoke-test all critical routes:
+5. Upgrade Next 15 -> 16 and resolve framework convention changes (`proxy.ts`, lint config).
+6. Re-run baseline checks and smoke-test all critical routes:
    `/compass`, `/log`, `/log/complete`, `/insights`, `/settle`, `/drift`, `/stash`, `/workshop`.
-6. Upgrade Next 15 -> 16 only after green checks on step 5.
 
 ## Operational Notes
 

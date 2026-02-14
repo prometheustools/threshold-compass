@@ -33,9 +33,14 @@ export function initSentry(): void {
   }
   
   try {
-    // Dynamic import to avoid SSR issues
-    import('@sentry/nextjs').then((Sentry) => {
-      Sentry.init({
+    // Runtime import avoids hard dependency when package is intentionally omitted.
+    const dynamicImport = new Function('modulePath', 'return import(modulePath)') as (
+      modulePath: string
+    ) => Promise<{ init: (config: SentryConfig & Record<string, unknown>) => void }>
+
+    dynamicImport('@sentry/nextjs')
+      .then((Sentry) => {
+        Sentry.init({
         dsn,
         environment: process.env.NEXT_PUBLIC_APP_ENV || process.env.NODE_ENV || 'development',
         release: process.env.NEXT_PUBLIC_APP_VERSION || 'unknown',
@@ -48,7 +53,7 @@ export function initSentry(): void {
         replaysOnErrorSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
         
         // Error filtering
-        beforeSend(event) {
+        beforeSend(event: { exception?: { values?: Array<{ value?: string }> } }) {
           // Filter out common non-actionable errors
           const errorMessage = event.exception?.values?.[0]?.value || '';
           
@@ -73,7 +78,10 @@ export function initSentry(): void {
       
       sentryInitialized = true;
       console.log('[Sentry] Initialized successfully');
-    });
+      })
+      .catch((error) => {
+        console.warn('[Sentry] Package unavailable, skipping initialization', error);
+      });
   } catch (error) {
     console.error('[Sentry] Failed to initialize:', error);
   }

@@ -1,0 +1,103 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-12-24",
+  "description": "Workshop Models - visual frameworks for understanding practice",
+  "models": [
+    {
+      "id": "model-threshold-range",
+      "title": "The Threshold Range",
+      "type": "model",
+      "headline": "Your threshold is a range, not a number",
+      "tryThis": "Track 10 doses across different contexts. Notice how the 'right' dose changes based on sleep, stress, and intention.",
+      "duration": 0,
+      "whyItWorks": "Fixed dosing ignores context. Your threshold varies by 30-50% based on conditions. The range gives you precision.",
+      "visualDescription": "A horizontal bar with three zones: Low (left, green), Sweet Spot (center, gold), High (right, orange). A marker shows where today's dose lands based on context factors.",
+      "keyInsight": "Low threshold = subtle support. Sweet spot = optimal enhancement. High threshold = approaching perceptual. All have their place.",
+      "relatedPatterns": ["sleep_correlation", "environment_correlation"]
+    },
+    {
+      "id": "model-invisible-line",
+      "title": "The Invisible Line",
+      "type": "model",
+      "headline": "The point between useful and impaired",
+      "tryThis": "For your next 5 doses, note the moment you notice something. That's your line. Track it by batch.",
+      "duration": 0,
+      "whyItWorks": "The invisible line is where threshold becomes noticeable. Staying below it = functional enhancement. Crossing it = different state entirely.",
+      "visualDescription": "A dotted horizontal line across a gradient. Below the line: 'Sub-threshold (functional)'. Above the line: 'Perceptual (altered)'. The line itself marked 'Your invisible line'.",
+      "keyInsight": "The line moves. It's higher when rested, lower when depleted. It varies by batch. Calibrate each time.",
+      "relatedPatterns": ["sleep_correlation", "food_correlation"]
+    },
+    {
+      "id": "model-context-variables",
+      "title": "Context Variables",
+      "type": "model",
+      "headline": "Everything that affects your response",
+      "tryThis": "Before your next dose, score each variable. After, rate the experience. Look for correlations over time.",
+      "duration": 0,
+      "whyItWorks": "The dose is only one input. Sleep, food, stress, environment, and timing all modulate the experience. Track them all.",
+      "visualDescription": "A wheel with 'DOSE' at center. Spokes radiating out to: Sleep, Food Timing, Stress, Environment, Time of Day, Caffeine, Exercise, Menstrual Cycle (optional). Each spoke has a slider from Low to High.",
+      "keyInsight": "Most people underestimate sleep and overestimate dose. Get the context right and the dose becomes secondary.",
+      "relatedPatterns": ["sleep_correlation", "caffeine_timing", "environment_correlation"]
+    },
+    {
+      "id": "model-carryover",
+      "title": "The Carryover Effect",
+      "type": "model",
+      "headline": "Yesterday's dose affects today's sensitivity",
+      "tryThis": "After dosing two days in a row, notice the difference. The second dose almost always feels weaker. That's carryover.",
+      "duration": 0,
+      "whyItWorks": "5-HT2A receptors downregulate rapidly. A dose today means reduced sensitivity tomorrow. The app calculates this for you.",
+      "visualDescription": "A timeline showing Day 1 (dose) with full color, Day 2 (60% color), Day 3 (80% color), Day 4+ (full color again). Arrow showing 'sensitivity returning'.",
+      "keyInsight": "Clear carryover = full sensitivity. Mild carryover = 10-15% reduction. Moderate = 20-25%. High = consider rest.",
+      "relatedPatterns": []
+    },
+    {
+      "id": "model-breathing-room",
+      "title": "The Breathing Room Model",
+      "type": "model",
+      "headline": "The gap between stimulus and response",
+      "tryThis": "Next time you notice an emotional reaction, see if you can name the gap before you respond. That's the room.",
+      "duration": 0,
+      "whyItWorks": "Microdosing doesn't create change. It creates space where you can see your patterns before acting on them. The room is where choice lives.",
+      "visualDescription": "A simple diagram: [STIMULUS] → (gap labeled 'Breathing Room') → [RESPONSE]. The gap is highlighted.",
+      "keyInsight": "The goal isn't to feel different. It's to have more room between what happens and how you react.",
+      "relatedPatterns": []
+    },
+    {
+      "id": "model-protocol-cycle",
+      "title": "The Protocol Cycle",
+      "type": "model",
+      "headline": "Dose days, transition days, integration days",
+      "tryThis": "Plan your week with all three phases. Dose days for activation. Transition days for processing. Integration days for application.",
+      "duration": 0,
+      "whyItWorks": "The real work happens between doses. Integration days are when insights become changes. Don't skip them.",
+      "visualDescription": "A circular diagram divided into three sections: 'DOSE' (orange, small slice), 'TRANSITION' (yellow, medium slice), 'INTEGRATION' (green, large slice). Arrows showing flow.",
+      "keyInsight": "If you're only tracking dose days, you're missing most of the practice. The integration phase is where transformation lives.",
+      "relatedPatterns": []
+    },
+    {
+      "id": "model-direction-vs-destination",
+      "title": "Direction Over Destination",
+      "type": "model",
+      "headline": "A compass points north, it doesn't take you there",
+      "tryThis": "Reframe your intention from 'I want to feel X' to 'I'm pointed toward X'. Notice how this changes your relationship to outcomes.",
+      "duration": 0,
+      "whyItWorks": "Destinations create attachment to outcomes. Directions create orientation without grasping. The compass metaphor is the core of this practice.",
+      "visualDescription": "A compass with needle pointing toward 'NORTH STAR' (labeled with user's direction). The path is winding, not straight.",
+      "keyInsight": "You can be pointed in the right direction while experiencing difficulty. The direction is what matters, not the terrain.",
+      "relatedPatterns": []
+    },
+    {
+      "id": "model-conditions-signals",
+      "title": "Conditions vs. Signals",
+      "type": "model",
+      "headline": "What's around you vs. what's inside you",
+      "tryThis": "In your next check-in, clearly separate external conditions (load, noise, schedule) from internal signals (energy, clarity, stability).",
+      "duration": 0,
+      "whyItWorks": "Most trackers conflate environment and inner state. Separating them reveals which conditions create which signals for YOU specifically.",
+      "visualDescription": "Two concentric circles. Outer circle: 'CONDITIONS' (external, environment). Inner circle: 'SIGNALS' (internal, felt sense). Arrows showing influence between them.",
+      "keyInsight": "High external load doesn't always mean low internal stability. Some people thrive under pressure. Track your patterns.",
+      "relatedPatterns": ["environment_correlation"]
+    }
+  ]
+}

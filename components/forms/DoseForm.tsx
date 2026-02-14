@@ -78,6 +78,80 @@ const contextTagOptions: Array<{ value: ContextTag; label: string }> = [
   { value: 'mixed', label: 'Mixed' },
 ]
 
+const medicationStorageKey = 'threshold_compass_medications'
+
+type MedicationRiskLevel = 'high' | 'moderate'
+
+interface MedicationRisk {
+  medication: string
+  level: MedicationRiskLevel
+  reason: string
+}
+
+const medicationRiskMatchers: Array<{ pattern: RegExp; level: MedicationRiskLevel; reason: string }> = [
+  {
+    pattern: /\b(lithium)\b/i,
+    level: 'high',
+    reason: 'Lithium can significantly increase adverse reaction risk with psychedelics.',
+  },
+  {
+    pattern: /\b(maoi|phenelzine|tranylcypromine|isocarboxazid)\b/i,
+    level: 'high',
+    reason: 'MAOIs can amplify and destabilize effects.',
+  },
+  {
+    pattern: /\b(ssri|sertraline|fluoxetine|escitalopram|citalopram|paroxetine|fluvoxamine)\b/i,
+    level: 'moderate',
+    reason: 'SSRIs may blunt or alter effects; avoid unsupervised dose escalation.',
+  },
+  {
+    pattern: /\b(snri|venlafaxine|duloxetine|desvenlafaxine)\b/i,
+    level: 'moderate',
+    reason: 'SNRIs can alter response and side-effect profile.',
+  },
+  {
+    pattern: /\b(amphetamine|adderall|methylphenidate|vyvanse)\b/i,
+    level: 'moderate',
+    reason: 'Stimulants can increase anxiety, heart rate, and interference.',
+  },
+  {
+    pattern: /\b(benzodiazepine|alprazolam|lorazepam|clonazepam|diazepam)\b/i,
+    level: 'moderate',
+    reason: 'Benzodiazepines can mask signal quality and confound calibration.',
+  },
+]
+
+function loadMedicationsFromStorage(): string[] {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const raw = window.localStorage.getItem(medicationStorageKey)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+  } catch {
+    return []
+  }
+}
+
+function analyzeMedicationRisks(medications: string[]): MedicationRisk[] {
+  const risks: MedicationRisk[] = []
+
+  for (const medication of medications) {
+    const match = medicationRiskMatchers.find((matcher) => matcher.pattern.test(medication))
+    if (!match) continue
+
+    risks.push({
+      medication,
+      level: match.level,
+      reason: match.reason,
+    })
+  }
+
+  return risks
+}
+
 function classifyDay(signal: number, texture: number, interference: number): DayClassification {
   if (signal >= 6 && interference <= 2) return 'green'
   if (interference >= 5) return 'red'
@@ -141,11 +215,16 @@ export default function DoseForm() {
   const [timingTag, setTimingTag] = useState<TimingTag | ''>('')
   const [contextTags, setContextTags] = useState<ContextTag[]>([])
   const [notes, setNotes] = useState('')
+  const [medications, setMedications] = useState<string[]>([])
+  const [medicationAcknowledged, setMedicationAcknowledged] = useState(false)
 
   const selectedBatch = useMemo(
     () => batches.find((batch) => batch.id === batchId) ?? null,
     [batchId, batches]
   )
+
+  const medicationRisks = useMemo(() => analyzeMedicationRisks(medications), [medications])
+  const hasMedicationRisks = medicationRisks.length > 0
 
   const unit: 'g' | 'µg' = user?.substance_type === 'lsd' ? 'µg' : 'g'
 
@@ -278,6 +357,14 @@ export default function DoseForm() {
     }
   }, [selectedBatch, user])
 
+  useEffect(() => {
+    setMedications(loadMedicationsFromStorage())
+  }, [])
+
+  useEffect(() => {
+    setMedicationAcknowledged(false)
+  }, [medications])
+
   const adjustAmount = (delta: number) => {
     const currentAmount = Number.parseFloat(amount)
     const normalized = Number.isFinite(currentAmount) ? currentAmount : 0
@@ -304,6 +391,11 @@ export default function DoseForm() {
       return
     }
 
+    if (hasMedicationRisks && !medicationAcknowledged) {
+      setError('Please acknowledge the medication safety check before logging.')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
@@ -318,6 +410,11 @@ export default function DoseForm() {
       
       const trimmedNotes = notes.trim()
       const trimmedIntention = intention.trim()
+      const medicationNote =
+        hasMedicationRisks
+          ? `[med-check] ${medicationRisks.map((risk) => `${risk.medication} (${risk.level})`).join(', ')}`
+          : ''
+      const combinedNotes = [trimmedNotes, medicationNote].filter((entry) => entry.length > 0).join('\n')
       const derivedPhase = getPhaseFromDoseNumber(discoveryDoseNumber)
       const dayClassification = classifyDay(signalScore, textureScore, interferenceScore)
       const parsedPreDoseMood = typeof preDoseMood === 'number' ? preDoseMood : null
@@ -333,7 +430,7 @@ export default function DoseForm() {
         sleep_quality: sleepQuality || null,
         energy_level: energyLevel || null,
         stress_level: stressLevel || null,
-        notes: trimmedNotes.length > 0 ? trimmedNotes : null,
+        notes: combinedNotes.length > 0 ? combinedNotes : null,
         discovery_dose_number: selectedBatch?.calibration_status === 'calibrating' ? discoveryDoseNumber : null,
         phase: derivedPhase,
         dose_number: discoveryDoseNumber,
@@ -360,7 +457,7 @@ export default function DoseForm() {
         sleep_quality: sleepQuality || null,
         energy_level: energyLevel || null,
         stress_level: stressLevel || null,
-        notes: trimmedNotes.length > 0 ? trimmedNotes : null,
+        notes: combinedNotes.length > 0 ? combinedNotes : null,
         discovery_dose_number: selectedBatch?.calibration_status === 'calibrating' ? discoveryDoseNumber : null,
       }
 
@@ -482,8 +579,60 @@ export default function DoseForm() {
             onChange={(event) => setBatchId(event.target.value)}
             options={batches.map((batch) => ({ value: batch.id, label: batch.name }))}
           />
+
+          <div>
+            <span className="font-mono text-xs tracking-widest uppercase text-bone">Food State</span>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {preparationOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setPreparation(option.value)}
+                  className={`rounded-button border px-2 py-2 font-mono text-[11px] uppercase tracking-wide transition-settle ${
+                    preparation === option.value
+                      ? 'border-orange bg-orange/10 text-orange'
+                      : 'border-ember/30 bg-elevated text-bone hover:border-ember/80'
+                  }`}
+                  aria-pressed={preparation === option.value}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </Card>
+
+      {hasMedicationRisks && (
+        <Card className="border-status-elevated/40 bg-status-elevated/10">
+          <p className="font-mono text-xs tracking-widest uppercase text-status-elevated">Medication Safety Check</p>
+          <p className="mt-2 text-sm text-bone">
+            We detected medications with known interaction risks. Consider clinician guidance before dosing.
+          </p>
+          <div className="mt-3 space-y-2">
+            {medicationRisks.map((risk) => (
+              <div key={risk.medication} className="rounded-button border border-status-elevated/30 bg-status-elevated/5 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs uppercase tracking-widest text-ivory">{risk.medication}</span>
+                  <span className={`text-[10px] uppercase ${risk.level === 'high' ? 'text-status-elevated' : 'text-status-mild'}`}>
+                    {risk.level}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-bone">{risk.reason}</p>
+              </div>
+            ))}
+          </div>
+          <label className="mt-3 flex items-start gap-2 text-sm text-bone">
+            <input
+              type="checkbox"
+              checked={medicationAcknowledged}
+              onChange={(event) => setMedicationAcknowledged(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-ember/30 bg-elevated"
+            />
+            <span>I reviewed this warning and understand this app does not replace medical advice.</span>
+          </label>
+        </Card>
+      )}
 
       <Card padding="lg">
         <button
@@ -497,16 +646,6 @@ export default function DoseForm() {
 
         {showContext && (
           <div className="mt-4 space-y-3">
-            <Select
-              label="Preparation"
-              value={preparation}
-              onChange={(event) => setPreparation(event.target.value as Preparation | '')}
-              options={[
-                { value: '', label: 'Select one' },
-                ...preparationOptions.map((option) => ({ value: option.value, label: option.label })),
-              ]}
-            />
-
             <Select
               label="Sleep Quality"
               value={sleepQuality}

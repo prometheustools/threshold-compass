@@ -353,6 +353,18 @@ export default function DiscoveryPage() {
             of your optimal range.
           </p>
         </Card>
+
+        <Card padding="md" className="border-violet/30 bg-violet/10">
+          <p className="font-mono text-xs tracking-widest uppercase text-violet">Workshop</p>
+          <p className="mt-2 text-sm text-bone">
+            Want practical drills and mental models while calibrating? Open the Workshop.
+          </p>
+          <Link href="/workshop">
+            <Button size="md" variant="secondary" className="mt-4 w-full">
+              Open Workshop
+            </Button>
+          </Link>
+        </Card>
       </div>
     </div>
   )

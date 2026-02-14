@@ -1,6 +1,7 @@
 'use client'
 
 import { Pill } from 'lucide-react'
+import Link from 'next/link'
 import DoseForm from '@/components/forms/DoseForm'
 
 export default function LogPage() {
@@ -24,6 +25,14 @@ export default function LogPage() {
       {/* Content */}
       <main className="px-4 sm:px-6 py-6">
         <div className="max-w-xl mx-auto">
+          <div className="mb-4 flex justify-end">
+            <Link
+              href="/log/complete"
+              className="rounded-button border border-ember/30 bg-elevated px-3 py-2 font-mono text-[10px] tracking-widest uppercase text-bone transition-settle hover:border-ember/60 hover:text-ivory"
+            >
+              Complete Previous Dose
+            </Link>
+          </div>
           <DoseForm />
         </div>
       </main>

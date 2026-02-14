@@ -11,6 +11,16 @@ export default function SettlePage() {
       </h1>
 
       <div className="w-full max-w-sm space-y-4">
+        <Link href="/drift" className="block">
+          <div className="flex items-center gap-4 p-6 min-h-[72px] bg-status-mild/10 border border-status-mild/30 rounded-card hover:bg-status-mild/15 transition-settle" aria-label="Drift">
+            <Heart className="text-status-mild" size={28} />
+            <div>
+              <span className="text-xl text-ivory block">Drift</span>
+              <span className="text-xs text-bone">Combined breathe + ground</span>
+            </div>
+          </div>
+        </Link>
+
         <Link href="/settle/breathe" className="block">
           <div className="flex items-center gap-4 p-6 min-h-[72px] bg-surface border border-ember/20 rounded-card hover:bg-elevated transition-settle" aria-label="Breathe">
             <Wind className="text-orange" size={28} />

@@ -3,15 +3,39 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import Link from 'next/link'
-import type { DoseLog } from '@/types'
+import { calculateThresholdRange } from '@/lib/algorithms/threshold-range'
+import type { DoseLog, ThresholdZone } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import Card from '@/components/ui/Card'
 import LoadingState from '@/components/ui/LoadingState'
+import { ThresholdTerrainMap } from '@/components/insights'
 
 function percent(part: number, total: number): number {
   if (total <= 0) return 0
   return Math.round((part / total) * 100)
+}
+
+function confidenceMeta(score: number | null) {
+  if ((score ?? 0) >= 80) {
+    return { label: 'high', className: 'bg-status-clear/20 text-status-clear' }
+  }
+  if ((score ?? 0) >= 60) {
+    return { label: 'medium', className: 'bg-status-mild/20 text-status-mild' }
+  }
+  return { label: 'low', className: 'bg-status-elevated/20 text-status-elevated' }
+}
+
+function toThresholdZone(row: DoseLog): ThresholdZone | null {
+  if (row.threshold_feel === 'nothing') return 'sub'
+  if (row.threshold_feel === 'under') return 'low'
+  if (row.threshold_feel === 'sweetspot') return 'sweet_spot'
+  if (row.threshold_feel === 'over') return 'over'
+
+  if (row.day_classification === 'green') return 'sweet_spot'
+  if (row.day_classification === 'yellow') return 'high'
+  if (row.day_classification === 'red') return 'over'
+  return null
 }
 
 export default function InsightsPage() {
@@ -142,6 +166,24 @@ export default function InsightsPage() {
     }
   }, [rows])
 
+  const thresholdRange = useMemo(() => {
+    const zoned = rows
+      .map((row) => {
+        const thresholdZone = toThresholdZone(row)
+        if (!thresholdZone) return null
+        return {
+          amount: row.amount,
+          threshold_zone: thresholdZone,
+        }
+      })
+      .filter((entry): entry is { amount: number; threshold_zone: ThresholdZone } => entry !== null)
+
+    if (zoned.length < 5) return null
+
+    const batchId = rows.find((row) => row.batch_id)?.batch_id ?? 'active'
+    return calculateThresholdRange(zoned, batchId)
+  }, [rows])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-base px-4 py-8 text-ivory">
@@ -176,6 +218,13 @@ export default function InsightsPage() {
           <p className="mt-3 text-sm text-bone">
             {stats.total} total doses, {stats.stiCount} with STI scores.
           </p>
+        </Card>
+
+        <Card padding="lg">
+          <p className="font-mono text-xs uppercase tracking-widest text-bone">Threshold Terrain Map</p>
+          <div className="mt-3">
+            <ThresholdTerrainMap range={thresholdRange} doses={rows} />
+          </div>
         </Card>
 
         <Card padding="lg">
@@ -252,11 +301,19 @@ export default function InsightsPage() {
             <div className="mt-3 space-y-2">
               {patterns.slice(0, 6).map((pattern) => (
                 <div key={pattern.id} className="rounded-button border border-ember/20 bg-elevated p-3">
+                  {(() => {
+                    const confidence = confidenceMeta(pattern.confidence)
+                    return (
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className={`rounded-button px-2 py-1 font-mono text-[10px] uppercase ${confidence.className}`}>
+                          {confidence.label}
+                        </span>
+                        <span className="font-mono text-xs text-orange">{pattern.confidence ?? 0}%</span>
+                      </div>
+                    )
+                  })()}
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm text-ivory">{pattern.title}</p>
-                    <span className="font-mono text-xs text-orange">
-                      {pattern.confidence ?? 0}%
-                    </span>
                   </div>
                   {pattern.description && <p className="mt-1 text-xs text-bone">{pattern.description}</p>}
                   {pattern.recommendation && (

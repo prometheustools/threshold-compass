@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useEffect, useState } from 'react'
+import Link from 'next/link'
 import type { Batch, CarryoverResult, ThresholdRange as ThresholdRangeModel, User } from '@/types'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -167,9 +168,17 @@ export default function CompassView({
               </Card>
             )}
 
-            <Button type="button" size="lg" className="mt-2 w-full" onClick={onLogDose} disabled={previewMode}>
-              Log Dose
-            </Button>
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Button type="button" size="lg" className="w-full" onClick={onLogDose} disabled={previewMode}>
+                Log Dose
+              </Button>
+              <Link
+                href="/workshop"
+                className="flex min-h-[44px] items-center justify-center rounded-button border border-violet/40 bg-violet/10 px-4 py-3 text-sm font-medium text-ivory transition-settle hover:border-violet/70 hover:bg-violet/20"
+              >
+                Open Workshop
+              </Link>
+            </div>
           </>
         )}
       </div>

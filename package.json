@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "schema:ensure": "bash ./scripts/ensure-supabase-schema.sh"
+    "schema:ensure": "bash ./scripts/ensure-supabase-schema.sh",
+    "upgrade:readiness": "bash ./scripts/upgrade-readiness.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.0",

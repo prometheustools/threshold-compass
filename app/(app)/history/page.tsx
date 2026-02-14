@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import type { DoseLog, CheckIn } from '@/types'
 import { createClient } from '@/lib/supabase/client'
@@ -13,6 +13,8 @@ interface DoseWithBatchAndCheckIn extends DoseLog {
   batch_name: string
   check_in: CheckIn | null
 }
+
+type HistoryFilter = 'all' | 'complete' | 'incomplete' | 'sweetspot'
 
 function formatDate(dateString: string): string {
   return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(dateString))
@@ -45,10 +47,17 @@ const dayClassColors: Record<string, string> = {
   unclassified: 'text-ash',
 }
 
+function isSweetSpot(log: DoseWithBatchAndCheckIn): boolean {
+  if (log.threshold_feel === 'sweetspot') return true
+  if (log.day_classification === 'green') return true
+  return log.check_in?.threshold_zone === 'sweet_spot'
+}
+
 export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [logs, setLogs] = useState<DoseWithBatchAndCheckIn[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<HistoryFilter>('all')
 
   useEffect(() => {
     let active = true
@@ -118,6 +127,29 @@ export default function HistoryPage() {
 
   const toggle = (id: string) => setExpandedId(expandedId === id ? null : id)
 
+  const filterCounts = useMemo(() => {
+    return {
+      all: logs.length,
+      complete: logs.filter((log) => log.post_dose_completed).length,
+      incomplete: logs.filter((log) => !log.post_dose_completed).length,
+      sweetspot: logs.filter((log) => isSweetSpot(log)).length,
+    }
+  }, [logs])
+
+  const filteredLogs = useMemo(() => {
+    if (activeFilter === 'all') return logs
+    if (activeFilter === 'complete') return logs.filter((log) => log.post_dose_completed)
+    if (activeFilter === 'incomplete') return logs.filter((log) => !log.post_dose_completed)
+    return logs.filter((log) => isSweetSpot(log))
+  }, [activeFilter, logs])
+
+  useEffect(() => {
+    if (!expandedId) return
+    if (!filteredLogs.some((log) => log.id === expandedId)) {
+      setExpandedId(null)
+    }
+  }, [expandedId, filteredLogs])
+
   return (
     <div className="min-h-screen bg-base text-ivory">
       {/* Header */}
@@ -138,14 +170,43 @@ export default function HistoryPage() {
       {/* Content */}
       <main className="px-4 sm:px-6 py-6">
         <div className="max-w-xl mx-auto space-y-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {(
+              [
+                { key: 'all', label: 'All' },
+                { key: 'complete', label: 'Complete' },
+                { key: 'incomplete', label: 'Incomplete' },
+                { key: 'sweetspot', label: 'Sweet Spot' },
+              ] as const
+            ).map((filter) => {
+              const active = activeFilter === filter.key
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.key)}
+                  className={`rounded-button border px-3 py-2 text-left transition-settle ${
+                    active
+                      ? 'border-orange bg-orange/15 text-ivory'
+                      : 'border-ember/30 bg-elevated text-bone hover:border-ember/60'
+                  }`}
+                  aria-pressed={active}
+                >
+                  <p className="font-mono text-[10px] uppercase tracking-widest">{filter.label}</p>
+                  <p className="mt-1 text-lg leading-none">{filterCounts[filter.key]}</p>
+                </button>
+              )
+            })}
+          </div>
+
           {loading ? (
             <Card padding="lg">
               <LoadingState message="loading" size="md" />
             </Card>
-          ) : logs.length === 0 ? (
+          ) : filteredLogs.length === 0 ? (
             <EmptyStateNoDoses />
           ) : (
-            logs.map((log) => (
+            filteredLogs.map((log) => (
               <Card key={log.id} className="overflow-hidden transition-all duration-300 hover:border-ember/40">
                 <button
                   type="button"
@@ -165,6 +226,9 @@ export default function HistoryPage() {
                       </div>
                       <p className="mt-1 text-xs text-ash">
                         {log.batch_name}
+                      </p>
+                      <p className="mt-1 text-[10px] font-mono uppercase tracking-widest text-bone">
+                        {log.post_dose_completed ? 'Complete' : 'Incomplete'}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">

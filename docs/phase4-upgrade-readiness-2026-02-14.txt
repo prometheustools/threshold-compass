@@ -1,0 +1,21 @@
+
+> threshold-compass@0.1.0 upgrade:readiness /home/taylor/GitHub/threshold-compass
+> bash ./scripts/upgrade-readiness.sh
+
+Phase 4 Framework Upgrade Readiness
+Timestamp (UTC): 2026-02-14T07:06:29Z
+Branch: phase4/next15-react19-prep
+Node: v24.13.0
+pnpm: 10.26.0
+next: 14.2.18
+react: ^18.3.1
+react-dom: ^18.3.1
+
+[critical] Legacy pages-router import: 0 match(es)
+[critical] Legacy data methods: 0 match(es)
+[critical] ReactDOM legacy render API: 0 match(es)
+[warn] Next runtime config usage: 0 match(es)
+[warn] Legacy next/head usage in app router code: 0 match(es)
+[warn] Legacy next/image props: 0 match(es)
+[warn] Explicit unstable API usage: 0 match(es)
+Result: PASS (no critical blockers detected)

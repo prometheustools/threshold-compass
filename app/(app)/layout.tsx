@@ -2,7 +2,18 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Compass, Pill, FlaskConical, Layers, Clock, Wind, BarChart3, Calculator } from 'lucide-react'
+import {
+  Archive,
+  BarChart3,
+  BookOpen,
+  Calculator,
+  Clock,
+  Compass,
+  FlaskConical,
+  Layers,
+  Pill,
+  Wind,
+} from 'lucide-react'
 import OfflineBanner from '@/components/ui/OfflineBanner'
 
 const navItems = [
@@ -10,8 +21,10 @@ const navItems = [
   { href: '/log', label: 'Log', icon: Pill },
   { href: '/calculator', label: 'Calc', icon: Calculator },
   { href: '/discovery', label: 'Discovery', icon: FlaskConical },
+  { href: '/workshop', label: 'Workshop', icon: BookOpen },
   { href: '/insights', label: 'Insights', icon: BarChart3 },
   { href: '/batch', label: 'Batches', icon: Layers },
+  { href: '/stash', label: 'Stash', icon: Archive },
   { href: '/history', label: 'History', icon: Clock },
 ]
 

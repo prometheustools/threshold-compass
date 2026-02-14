@@ -2,7 +2,46 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCHEMA_PATH="${1:-$ROOT_DIR/supabase/schema.sql}"
+SCHEMA_PATH="$ROOT_DIR/supabase/schema.sql"
+MODE="apply"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  bash ./scripts/ensure-supabase-schema.sh [--check-only] [--schema PATH]
+
+Options:
+  --check-only   Validate required tables exist; do not apply schema
+  --schema PATH  Override schema file path (default: supabase/schema.sql)
+  -h, --help     Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --check-only)
+      MODE="check"
+      shift
+      ;;
+    --schema)
+      if [[ $# -lt 2 ]]; then
+        echo "Missing value for --schema"
+        exit 1
+      fi
+      SCHEMA_PATH="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 if [[ -f "$ROOT_DIR/.env.local" ]]; then
   # Load project env without overriding explicitly provided shell vars.
@@ -17,7 +56,7 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -f "$SCHEMA_PATH" ]]; then
+if [[ "$MODE" == "apply" && ! -f "$SCHEMA_PATH" ]]; then
   echo "Schema file not found: $SCHEMA_PATH"
   exit 1
 fi
@@ -84,6 +123,11 @@ MISSING_TABLES="$(run_psql -Atc "
 if [[ -z "$MISSING_TABLES" ]]; then
   echo "Supabase schema already present."
   exit 0
+fi
+
+if [[ "$MODE" == "check" ]]; then
+  echo "Missing tables detected: $MISSING_TABLES"
+  exit 2
 fi
 
 echo "Missing tables detected: $MISSING_TABLES"

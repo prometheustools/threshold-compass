@@ -68,3 +68,4 @@ pnpm run upgrade:readiness
 - Network access is required for package upgrades and codemods.
 - Keep migrations and framework upgrades in separate commits.
 - Do not cut over if `pnpm run upgrade:readiness` reports critical blockers.
+- CI now enforces `lint`, `build`, `upgrade:readiness`, and production `audit` on push/PR.

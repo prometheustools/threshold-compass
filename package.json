@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint app components lib store types proxy.ts --ext .ts,.tsx,.js,.jsx --quiet",
+    "lint": "eslint app components lib store types proxy.ts --ext .ts,.tsx,.js,.jsx --max-warnings=0",
     "schema:check": "bash ./scripts/ensure-supabase-schema.sh --check-only",
     "schema:ensure": "bash ./scripts/ensure-supabase-schema.sh",
     "upgrade:readiness": "bash ./scripts/upgrade-readiness.sh",

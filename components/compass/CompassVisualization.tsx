@@ -128,7 +128,7 @@ export default function CompassVisualization({
       <svg
         viewBox="0 0 200 200"
         className="w-full h-full"
-        aria-label={`Compass visualization: ${state}`}
+        aria-label={`Compass visualization: ${state} (${unit}, ${calibrationStatus ?? 'unknown'})`}
       >
         <defs>
           {/* Gradient for dormant state */}

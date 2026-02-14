@@ -170,9 +170,19 @@ export default function CompassView({
               </Card>
             )}
 
-            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Button type="button" size="lg" className="w-full" onClick={onLogDose} disabled={previewMode}>
                 Log Dose
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="secondary"
+                className="w-full"
+                onClick={onSettle}
+                disabled={previewMode}
+              >
+                Settle
               </Button>
               <Link
                 href="/workshop"

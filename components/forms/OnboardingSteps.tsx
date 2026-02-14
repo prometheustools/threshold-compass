@@ -182,8 +182,6 @@ export default function OnboardingSteps() {
     return selected?.label ?? 'Not selected'
   }, [state.north_star])
 
-  const canSkipBatch = step === 4
-
   const handleCheckOutApp = () => {
     try {
       window.localStorage.setItem(PREVIEW_STORAGE_KEY, '1')
@@ -718,10 +716,9 @@ export default function OnboardingSteps() {
 
             {/* Step Indicators */}
             <div className="flex items-center gap-2">
-              {stepConfig.map((s, idx) => {
+              {stepConfig.map((s) => {
                 const isActive = step === s.id
                 const isComplete = step > s.id
-                const Icon = s.icon
                 
                 return (
                   <button

@@ -8,11 +8,6 @@
  * Returns early if key is missing.
  */
 
-interface PostHogConfig {
-  apiKey: string | undefined;
-  host?: string;
-}
-
 interface TrackEventOptions {
   event: string;
   properties?: Record<string, unknown>;

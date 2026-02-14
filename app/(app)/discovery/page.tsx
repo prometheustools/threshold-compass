@@ -13,33 +13,6 @@ import LoadingState from '@/components/ui/LoadingState'
 import DiscoveryProgress from '@/components/discovery/DiscoveryProgress'
 import DoseGuidance from '@/components/discovery/DoseGuidance'
 
-interface PhaseInfo {
-  name: string
-  description: string
-}
-
-function getPhaseInfo(doseNum: number): PhaseInfo {
-  if (doseNum <= 4) {
-    return {
-      name: 'Baseline',
-      description:
-        'Establish a personal baseline. Record experiences without actively seeking thresholds. Pay attention to subtle effects.',
-    }
-  }
-  if (doseNum <= 7) {
-    return {
-      name: 'Mapping',
-      description:
-        'Explore the edges of perception. Carefully adjust doses to map out initial threshold zones. Observe changes closely.',
-    }
-  }
-  return {
-    name: 'Refinement',
-    description:
-      'Fine-tune your understanding. Pinpoint precise thresholds and observe consistency across various conditions.',
-  }
-}
-
 function formatDoseValue(value: number | null): string {
   if (value === null || value === undefined) return '--'
   if (Number.isInteger(value)) return `${value}`

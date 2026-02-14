@@ -91,16 +91,6 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
     }
   }
 
-  const getDefaultUnit = (): DoseUnit => {
-    switch (substanceType) {
-      case 'lsd':
-        return 'ug'
-      case 'psilocybin':
-      default:
-        return 'mg'
-    }
-  }
-
   const handleSubstanceChange = (value: string) => {
     setSubstanceType(value)
     setForm('')

@@ -64,7 +64,10 @@ export default function DriftPage() {
   return (
     <main className="min-h-screen bg-base px-6 py-6 text-ivory">
       <header className="mx-auto flex w-full max-w-xl items-center justify-between">
-        <Link href="/compass" className="text-bone transition-settle hover:text-ivory">
+        <Link
+          href="/compass"
+          className="inline-flex min-h-[44px] items-center rounded-button border border-ember/30 bg-elevated px-4 py-2 text-bone transition-settle hover:border-ember/60 hover:text-ivory"
+        >
           ← Compass
         </Link>
         <span className="font-mono text-xs uppercase tracking-widest text-status-mild">Drift Mode</span>

@@ -7,6 +7,7 @@ import type { Batch, ThresholdRange } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
 import LoadingState from '@/components/ui/LoadingState'
 
 interface BatchComparison {
@@ -14,6 +15,8 @@ interface BatchComparison {
   range: ThresholdRange
   span: number
 }
+
+const NO_THRESHOLD_RANGES_ERROR = 'No batches with calculated threshold ranges'
 
 export default function ComparePage() {
   const router = useRouter()
@@ -52,7 +55,7 @@ export default function ComparePage() {
         if (!active) return
 
         if (results.length === 0) {
-          setError('No batches with calculated threshold ranges yet. Complete calibration on at least one batch.')
+          setError(NO_THRESHOLD_RANGES_ERROR)
         } else {
           setComparisons(results)
         }
@@ -101,9 +104,25 @@ export default function ComparePage() {
         {error ? (
           <Card padding="lg">
             <p className="text-sm text-bone">{error}</p>
-            <Link href="/batch" className="mt-3 inline-block text-sm text-orange hover:underline">
-              Manage Batches
-            </Link>
+            {error === NO_THRESHOLD_RANGES_ERROR && (
+              <p className="mt-2 text-xs text-ash">
+                Complete 10 calibration doses on a batch to unlock comparison.
+              </p>
+            )}
+            {error === NO_THRESHOLD_RANGES_ERROR ? (
+              <Button
+                type="button"
+                variant="primary"
+                className="mt-4 w-full sm:w-auto"
+                onClick={() => router.push('/batch')}
+              >
+                Manage Batches
+              </Button>
+            ) : (
+              <Link href="/batch" className="mt-3 inline-block text-sm text-orange hover:underline">
+                Manage Batches
+              </Link>
+            )}
           </Card>
         ) : (
           <>

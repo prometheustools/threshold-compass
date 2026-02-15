@@ -53,6 +53,7 @@ function getDayClassificationColor(classification: string | null): string {
 export default function HistoryPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [doses, setDoses] = useState<DoseWithBatch[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
   const [activeBatch, setActiveBatch] = useState<Batch | null>(null)
@@ -64,6 +65,7 @@ export default function HistoryPage() {
 
     const loadData = async () => {
       setLoading(true)
+      setError(null)
       try {
         const supabase = createClient()
         const anonUserId = await resolveCurrentUserId(supabase)
@@ -120,7 +122,9 @@ export default function HistoryPage() {
 
         setDoses(mappedDoses)
       } catch {
-        // fail silently
+        if (active) {
+          setError('Unable to load dose history. Please try again.')
+        }
       } finally {
         if (active) setLoading(false)
       }
@@ -196,6 +200,11 @@ export default function HistoryPage() {
               aria-label="Filter by batch"
             >
               <option value="all">All Batches</option>
+              {batches.length === 0 && (
+                <option value="" disabled>
+                  No batches available
+                </option>
+              )}
               {batches.map((batch) => (
                 <option key={batch.id} value={batch.id}>
                   {batch.name} {batch.is_active ? '(Active)' : ''}
@@ -212,6 +221,16 @@ export default function HistoryPage() {
           {loading ? (
             <Card padding="lg">
               <LoadingState message="loading history" size="md" />
+            </Card>
+          ) : error ? (
+            <Card padding="lg" className="text-center">
+              <p className="text-bone mb-4">{error}</p>
+              <Link
+                href="/compass"
+                className="inline-flex items-center justify-center rounded-button border border-ember/30 bg-elevated px-4 py-2 text-sm text-ivory transition-settle hover:border-ember/60"
+              >
+                Back to Compass
+              </Link>
             </Card>
           ) : doses.length === 0 ? (
             <Card padding="lg" className="text-center">

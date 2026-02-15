@@ -226,7 +226,8 @@ export default function DoseForm() {
   const medicationRisks = useMemo(() => analyzeMedicationRisks(medications), [medications])
   const hasMedicationRisks = medicationRisks.length > 0
 
-  const unit: 'g' | 'µg' = user?.substance_type === 'lsd' ? 'µg' : 'g'
+  const doseUnit: 'mg' | 'ug' = selectedBatch?.dose_unit === 'ug' ? 'ug' : 'mg'
+  const unitLabel = doseUnit === 'ug' ? 'µg' : 'mg'
 
   useEffect(() => {
     let active = true
@@ -385,6 +386,11 @@ export default function DoseForm() {
       return
     }
 
+    if (!selectedBatch) {
+      setError('Selected batch could not be found. Please choose a batch again.')
+      return
+    }
+
     const parsedAmount = Number.parseFloat(amount)
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setError('Amount must be greater than zero.')
@@ -424,7 +430,7 @@ export default function DoseForm() {
         user_id: anonUserId,
         batch_id: batchId,
         amount: Number(parsedAmount.toFixed(4)),
-        unit,
+        unit: doseUnit,
         dosed_at: new Date().toISOString(),
         preparation: preparation || null,
         sleep_quality: sleepQuality || null,
@@ -432,8 +438,8 @@ export default function DoseForm() {
         stress_level: stressLevel || null,
         notes: combinedNotes.length > 0 ? combinedNotes : null,
         discovery_dose_number: selectedBatch?.calibration_status === 'calibrating' ? discoveryDoseNumber : null,
-        phase: derivedPhase,
-        dose_number: discoveryDoseNumber,
+        phase: selectedBatch?.calibration_status === 'calibrating' ? derivedPhase : null,
+        dose_number: selectedBatch?.calibration_status === 'calibrating' ? discoveryDoseNumber : null,
         pre_dose_mood: parsedPreDoseMood,
         intention: trimmedIntention.length > 0 ? trimmedIntention : null,
         post_dose_completed: postDoseCompleted,
@@ -451,7 +457,7 @@ export default function DoseForm() {
         user_id: anonUserId,
         batch_id: batchId,
         amount: Number(parsedAmount.toFixed(4)),
-        unit,
+        unit: doseUnit,
         dosed_at: new Date().toISOString(),
         preparation: preparation || null,
         sleep_quality: sleepQuality || null,
@@ -461,19 +467,32 @@ export default function DoseForm() {
         discovery_dose_number: selectedBatch?.calibration_status === 'calibrating' ? discoveryDoseNumber : null,
       }
 
-      let { error: insertError } = await supabase.from('dose_logs').insert(fullPayload)
+      let insertedDoseId: string | null = null
+
+      const fullInsert = await supabase.from('dose_logs').insert(fullPayload).select('id').single()
+      let insertError = fullInsert.error
+      if (!insertError) {
+        insertedDoseId = fullInsert.data?.id ?? null
+      }
 
       // Schema may be partially migrated. Fall back to legacy payload so logging still works.
       if (insertError && isSchemaCacheColumnMissingError(insertError)) {
-        const fallback = await supabase.from('dose_logs').insert(legacyPayload)
+        const fallback = await supabase.from('dose_logs').insert(legacyPayload).select('id').single()
         insertError = fallback.error
+        if (!insertError) {
+          insertedDoseId = fallback.data?.id ?? null
+        }
       }
 
       if (insertError) {
         throw insertError
       }
 
-      router.push('/compass')
+      if (!postDoseCompleted && insertedDoseId) {
+        router.push(`/log/complete?dose=${insertedDoseId}`)
+      } else {
+        router.push('/compass')
+      }
       router.refresh()
     } catch (submitError) {
       setError(getErrorMessage(submitError))
@@ -482,7 +501,7 @@ export default function DoseForm() {
   }
 
   // Quick preset amounts
-  const presets = unit === 'g' ? [0.05, 0.08, 0.1, 0.12, 0.15, 0.2] : [5, 10, 15, 20, 25, 30]
+  const presets = doseUnit === 'ug' ? [5, 10, 15, 20, 25, 30] : [50, 80, 100, 120, 150, 200]
 
   if (loading) {
     return (
@@ -497,8 +516,8 @@ export default function DoseForm() {
       <Card padding="lg">
         <p className="font-mono text-xs tracking-widest uppercase text-status-elevated">No batch available</p>
         <p className="mt-2 text-sm text-bone">Create or activate a batch before logging a dose.</p>
-        <Button type="button" className="mt-4 w-full" onClick={() => router.push('/compass')}>
-          Back to Compass
+        <Button type="button" className="mt-4 w-full" onClick={() => router.push('/batch')}>
+          Open Batch Manager
         </Button>
       </Card>
     )
@@ -545,15 +564,15 @@ export default function DoseForm() {
               <button
                 type="button"
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated text-ivory transition-settle hover:border-ember/80"
-                onClick={() => adjustAmount(unit === 'g' ? -0.01 : -1)}
-                aria-label={`Decrease amount by ${unit === 'g' ? '0.01' : '1'}`}
+                onClick={() => adjustAmount(doseUnit === 'ug' ? -1 : -5)}
+                aria-label={`Decrease amount by ${doseUnit === 'ug' ? '1' : '5'}`}
               >
                 <Minus size={16} />
               </button>
 
               <Input
                 type="number"
-                step={unit === 'g' ? '0.01' : '1'}
+                step="1"
                 min="0"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
@@ -564,21 +583,30 @@ export default function DoseForm() {
               <button
                 type="button"
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated text-ivory transition-settle hover:border-ember/80"
-                onClick={() => adjustAmount(unit === 'g' ? 0.01 : 1)}
-                aria-label={`Increase amount by ${unit === 'g' ? '0.01' : '1'}`}
+                onClick={() => adjustAmount(doseUnit === 'ug' ? 1 : 5)}
+                aria-label={`Increase amount by ${doseUnit === 'ug' ? '1' : '5'}`}
               >
                 <Plus size={16} />
               </button>
             </div>
-            <p className="mt-2 font-mono text-xs tracking-widest uppercase text-bone">Unit: {unit}</p>
+            <p className="mt-2 font-mono text-xs tracking-widest uppercase text-bone">Unit: {unitLabel}</p>
           </label>
 
           <Select
             label="Batch"
             value={batchId}
             onChange={(event) => setBatchId(event.target.value)}
-            options={batches.map((batch) => ({ value: batch.id, label: batch.name }))}
+            options={batches.map((batch) => ({
+              value: batch.id,
+              label: `${batch.name}${batch.is_active ? '' : ' (inactive)'}`,
+            }))}
           />
+
+          {selectedBatch && !selectedBatch.is_active && (
+            <p className="text-xs text-status-mild">
+              This batch is inactive. You can still log to it, but activating it helps keep compass guidance aligned.
+            </p>
+          )}
 
           <div>
             <span className="font-mono text-xs tracking-widest uppercase text-bone">Food State</span>

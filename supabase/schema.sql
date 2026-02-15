@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS dose_logs (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   batch_id UUID NOT NULL REFERENCES batches(id),
   amount DECIMAL(6,4) NOT NULL CHECK (amount > 0),
-  unit TEXT NOT NULL DEFAULT 'g',
+  unit TEXT NOT NULL DEFAULT 'mg',
   dosed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Context (optional)

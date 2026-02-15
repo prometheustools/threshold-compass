@@ -1,4 +1,4 @@
-const CACHE_NAME = 'threshold-compass-v1'
+const CACHE_NAME = 'threshold-compass-v2'
 const ASSETS_TO_PRECACHE = [
   '/',
   '/settle',

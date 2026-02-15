@@ -161,6 +161,13 @@ export default function OnboardingSteps() {
 
   useEffect(() => {
     setWelcomeVisible(true)
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const isRedo = params.get('redo') === '1' || params.get('dev') === '1'
+      if (isRedo) {
+        setStep(1)
+      }
+    }
   }, [])
 
   const currentStepConfig = step > 0 ? stepConfig[step - 1] : stepConfig[0]

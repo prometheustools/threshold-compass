@@ -33,17 +33,17 @@ const northStarDegrees: Record<NorthStar, number> = {
 
 const tierLabels: Record<CarryoverTier, string> = {
   clear: 'CLEAR',
-  mild: 'MILD',
+  mild: 'MINIMAL',
   moderate: 'MODERATE',
-  elevated: 'ELEVATED',
+  elevated: 'EXCESS',
 }
 
 const northStarShortLabels: Record<NorthStar, string> = {
-  clarity: 'CL',
-  connection: 'CN',
-  creativity: 'CR',
-  calm: 'CA',
-  exploration: 'EX',
+  clarity: 'CLARITY',
+  connection: 'CONNECT',
+  creativity: 'CREATE',
+  calm: 'CALM',
+  exploration: 'EXPLORE',
 }
 
 export default function CompassVisualization({
@@ -180,6 +180,7 @@ export default function CompassVisualization({
 
         {(Object.keys(northStarDegrees) as NorthStar[]).map((key) => {
           const marker = polarToCartesian(100, 100, 95, northStarDegrees[key])
+          const labelMarker = polarToCartesian(100, 100, 104, northStarDegrees[key])
           const selected = key === northStar
 
           return (
@@ -192,10 +193,11 @@ export default function CompassVisualization({
                 opacity={selected ? 1 : 0.7}
               />
               <text
-                x={marker.x}
-                y={marker.y - 5}
+                x={labelMarker.x}
+                y={labelMarker.y}
                 textAnchor="middle"
-                className={`font-mono text-[6px] uppercase tracking-wide ${selected ? 'fill-orange' : 'fill-bone'}`}
+                dominantBaseline="middle"
+                className={`font-mono text-[5px] uppercase tracking-wide ${selected ? 'fill-orange' : 'fill-bone'}`}
                 opacity={selected ? 1 : 0.7}
               >
                 {northStarShortLabels[key]}
@@ -336,17 +338,34 @@ export default function CompassVisualization({
         {hasThresholdMarkers && thresholdRange && (
           <g className="font-mono text-[7px] uppercase tracking-wider fill-bone">
             {thresholdRange.floor_dose && (
-              <text x="35" y="95">LOW</text>
+              <text x="35" y="95">FLOOR</text>
             )}
             {thresholdRange.sweet_spot && (
-              <text x="85" y="55" fill="#E07A3E">SWEET</text>
+              <text x="85" y="55" fill="#E07A3E">SWEET SPOT</text>
             )}
             {thresholdRange.ceiling_dose && (
-              <text x="155" y="95">HIGH</text>
+              <text x="155" y="95">CEILING</text>
             )}
           </g>
         )}
       </svg>
+
+      {hasThresholdMarkers && thresholdRange && (
+        <div className="flex justify-center gap-4 mt-2 px-4">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-status-clear" />
+            <span className="font-mono text-[10px] text-bone uppercase tracking-wider">Floor</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-orange" />
+            <span className="font-mono text-[10px] text-bone uppercase tracking-wider">Sweet Spot</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-status-elevated" />
+            <span className="font-mono text-[10px] text-bone uppercase tracking-wider">Ceiling</span>
+          </div>
+        </div>
+      )}
 
       {/* Calibration progress indicator */}
       {state === 'calibrating' && (

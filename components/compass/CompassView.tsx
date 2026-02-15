@@ -219,7 +219,7 @@ export default function CompassView({
             </Card>
           )}
 
-          <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Button
               type="button"
               size="lg"
@@ -241,13 +241,6 @@ export default function CompassView({
             >
               Settle
             </Button>
-            <Link
-              href="/workshop"
-              aria-label="Open workshop"
-              className="flex min-h-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated px-4 py-3 text-sm font-medium text-bone transition-settle hover:border-ember/70 hover:bg-raised hover:text-ivory"
-            >
-              Open Workshop
-            </Link>
           </div>
         </>
       )}

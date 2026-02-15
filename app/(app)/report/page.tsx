@@ -18,6 +18,9 @@ interface ReportData {
   recentDoses: Array<{ amount: number; unit: string; dosed_at: string }>
 }
 
+const NO_ACTIVE_BATCH_ERROR = 'No active batch found'
+const NO_THRESHOLD_RANGE_ERROR = 'No threshold range calculated yet'
+
 function formatReport(data: ReportData): string {
   const lines = [
     'THRESHOLD COMPASS — PERSONAL THRESHOLD REPORT',
@@ -66,12 +69,12 @@ export default function ReportPage() {
           .from('batches').select('*').eq('user_id', userId).eq('is_active', true).limit(1)
 
         const batch = batchRows?.[0] as Batch | undefined
-        if (!batch || !active) { setError('No active batch found.'); setLoading(false); return }
+        if (!batch || !active) { setError(NO_ACTIVE_BATCH_ERROR); setLoading(false); return }
 
         const { data: rangeData } = await supabase
           .from('threshold_ranges').select('*').eq('user_id', userId).eq('batch_id', batch.id).maybeSingle()
 
-        if (!rangeData || !active) { setError('No threshold range calculated yet. Complete 10 calibration doses first.'); setLoading(false); return }
+        if (!rangeData || !active) { setError(NO_THRESHOLD_RANGE_ERROR); setLoading(false); return }
 
         const { data: doseRows } = await supabase
           .from('dose_logs').select('amount,unit,dosed_at')
@@ -141,9 +144,19 @@ export default function ReportPage() {
         {error ? (
           <Card padding="lg">
             <p className="text-sm text-bone">{error}</p>
-            <Link href="/compass" className="mt-3 inline-block text-sm text-orange hover:underline">
-              Return to Compass
-            </Link>
+            {error === NO_ACTIVE_BATCH_ERROR ? (
+              <Link href="/batch" className="mt-3 inline-block text-sm text-orange hover:underline">
+                Manage Batches
+              </Link>
+            ) : error === NO_THRESHOLD_RANGE_ERROR ? (
+              <Link href="/log" className="mt-3 inline-block text-sm text-orange hover:underline">
+                Log Doses
+              </Link>
+            ) : (
+              <Link href="/compass" className="mt-3 inline-block text-sm text-orange hover:underline">
+                Return to Compass
+              </Link>
+            )}
           </Card>
         ) : reportData ? (
           <>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Layers, Plus, Archive, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { Batch, SubstanceType, BatchForm as BatchFormType, EstimatedPotency } from '@/types'
 import { createClient } from '@/lib/supabase/client'
@@ -280,6 +281,9 @@ export default function BatchPage() {
     <div className="min-h-screen bg-base text-ivory">
       <header className="sticky top-0 z-30 border-b border-ember/10 bg-base/95 backdrop-blur-md">
         <div className="mx-auto max-w-xl px-4 py-4 sm:px-6">
+          <Link href="/compass" className="text-sm text-bone hover:text-ivory mb-2 inline-block">
+            ← Compass
+          </Link>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-orange/20 bg-orange/10">

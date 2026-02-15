@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {!isSettlePage && (
         <Link
-          href="/settle"
+          href="/drift"
           className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-orange text-base shadow-lg transition-settle hover:brightness-110 active:scale-95"
           aria-label="Settle Mode"
         >

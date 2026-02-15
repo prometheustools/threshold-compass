@@ -181,6 +181,12 @@ export default function HistoryPage() {
             </div>
           </div>
 
+          <div className="mt-2 flex justify-end">
+            <Link href="/batch" className="text-xs text-bone hover:text-ivory font-mono uppercase tracking-wider">
+              Manage Batches
+            </Link>
+          </div>
+
           {/* Batch filter */}
           <div className="mt-3">
             <select

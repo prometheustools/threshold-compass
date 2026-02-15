@@ -2,30 +2,14 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import {
-  Archive,
-  BarChart3,
-  BookOpen,
-  Calculator,
-  Clock,
-  Compass,
-  FlaskConical,
-  Layers,
-  Pill,
-  Wind,
-} from 'lucide-react'
+import { Compass, PenLine, Clock, Settings, Wind } from 'lucide-react'
 import OfflineBanner from '@/components/ui/OfflineBanner'
 
 const navItems = [
   { href: '/compass', label: 'Compass', icon: Compass },
-  { href: '/log', label: 'Log', icon: Pill },
-  { href: '/calculator', label: 'Calc', icon: Calculator },
-  { href: '/discovery', label: 'Discovery', icon: FlaskConical },
-  { href: '/workshop', label: 'Workshop', icon: BookOpen },
-  { href: '/insights', label: 'Insights', icon: BarChart3 },
-  { href: '/batch', label: 'Batches', icon: Layers },
-  { href: '/stash', label: 'Stash', icon: Archive },
+  { href: '/log', label: 'Log', icon: PenLine },
   { href: '/history', label: 'History', icon: Clock },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -37,7 +21,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <OfflineBanner />
       <main className="flex-1 pb-20">{children}</main>
 
-      {/* Settle Mode sticky button — always visible unless already in settle */}
       {!isSettlePage && (
         <Link
           href="/settle"
@@ -48,8 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Link>
       )}
 
-      {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-ember/20 bg-surface/95 backdrop-blur-sm">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-ember/20 bg-base backdrop-blur-sm">
         <div className="mx-auto flex max-w-xl items-center justify-around">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + '/')
@@ -57,7 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                className={`flex min-h-[56px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2 transition-quick ${
+                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2 transition-settle ${
                   isActive ? 'text-orange' : 'text-ash hover:text-bone'
                 }`}
                 aria-label={label}

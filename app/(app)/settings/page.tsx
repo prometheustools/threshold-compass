@@ -13,6 +13,11 @@ import Modal from '@/components/ui/Modal'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
+type NotificationState = {
+  message: string
+  type: 'success' | 'error'
+} | null
+
 type NotificationKey =
   | 'post_dose_reminder'
   | 'pattern_alerts'
@@ -142,6 +147,7 @@ export default function SettingsPage() {
   const [sensitivityStatus, setSensitivityStatus] = useState<SaveStatus>('idle')
   const [notificationStatus, setNotificationStatus] = useState<SaveStatus>('idle')
   const [medicationStatus, setMedicationStatus] = useState<SaveStatus>('idle')
+  const [notification, setNotification] = useState<NotificationState>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -172,6 +178,13 @@ export default function SettingsPage() {
 
     void load()
   }, [router])
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
 
   const saveProfilePatch = async (
     patch: Partial<Pick<User, 'north_star' | 'guidance_level' | 'sensitivity'>>,
@@ -222,8 +235,8 @@ export default function SettingsPage() {
       saveNotificationsToStorage(next)
       return next
     })
-    setTimeout(() => setNotificationStatus('saved'), 200)
-    setTimeout(() => setNotificationStatus('idle'), 1800)
+    setTimeout(() => setNotificationStatus('saved'), 800)
+    setTimeout(() => setNotificationStatus('idle'), 3000)
   }
 
   const addMedication = () => {
@@ -238,8 +251,8 @@ export default function SettingsPage() {
       return next
     })
     setNewMedication('')
-    setTimeout(() => setMedicationStatus('saved'), 200)
-    setTimeout(() => setMedicationStatus('idle'), 1800)
+    setTimeout(() => setMedicationStatus('saved'), 800)
+    setTimeout(() => setMedicationStatus('idle'), 3000)
   }
 
   const removeMedication = (value: string) => {
@@ -249,8 +262,8 @@ export default function SettingsPage() {
       saveMedicationsToStorage(next)
       return next
     })
-    setTimeout(() => setMedicationStatus('saved'), 200)
-    setTimeout(() => setMedicationStatus('idle'), 1800)
+    setTimeout(() => setMedicationStatus('saved'), 800)
+    setTimeout(() => setMedicationStatus('idle'), 3000)
   }
 
   const handleExport = async () => {
@@ -270,7 +283,7 @@ export default function SettingsPage() {
       document.body.removeChild(a)
     } catch (err) {
       console.error('Export error:', err)
-      alert('Failed to export data. Please try again.')
+      setNotification({ message: 'Failed to export data. Please try again.', type: 'error' })
     } finally {
       setExportLoading(false)
     }
@@ -297,11 +310,11 @@ export default function SettingsPage() {
         throw new Error(data.error ?? 'Import failed')
       }
 
-      alert('Import complete. Refreshing data views.')
+      setNotification({ message: 'Import complete. Refreshing data views.', type: 'success' })
       router.refresh()
     } catch (err) {
       console.error('Import error:', err)
-      alert(err instanceof Error ? err.message : 'Failed to import data.')
+      setNotification({ message: err instanceof Error ? err.message : 'Failed to import data.', type: 'error' })
     } finally {
       setImportLoading(false)
     }
@@ -332,7 +345,7 @@ export default function SettingsPage() {
       router.push('/autologin')
     } catch (err) {
       console.error('Delete error:', err)
-      alert('Failed to delete account. Please try again.')
+      setNotification({ message: 'Failed to delete account. Please try again.', type: 'error' })
       setDeleteLoading(false)
       setShowDeleteConfirm(false)
     }
@@ -356,7 +369,7 @@ export default function SettingsPage() {
       router.push('/onboarding?redo=1')
     } catch (err) {
       console.error('Redo onboarding error:', err)
-      alert('Unable to restart onboarding right now.')
+      setNotification({ message: 'Unable to restart onboarding right now.', type: 'error' })
     } finally {
       setRedoLoading(false)
     }
@@ -377,6 +390,26 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-base px-4 py-8 text-ivory animate-[fadeIn_800ms_ease-out]">
       <div className="mx-auto w-full max-w-xl space-y-6">
+        {notification && (
+          <div
+            className={`flex items-center justify-between rounded-lg border px-4 py-3 ${
+              notification.type === 'success'
+                ? 'border-status-clear/30 bg-status-clear/10 text-status-clear'
+                : 'border-status-elevated/30 bg-status-elevated/10 text-status-elevated'
+            }`}
+            role="alert"
+          >
+            <span className="text-sm">{notification.message}</span>
+            <button
+              type="button"
+              onClick={() => setNotification(null)}
+              className="ml-4 text-sm hover:opacity-80"
+              aria-label="Dismiss notification"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div>
           <p className="font-mono text-xs tracking-widest uppercase text-bone">Settings</p>
           <h1 className="mt-2 font-sans text-2xl">Profile and Preferences</h1>
@@ -458,6 +491,7 @@ export default function SettingsPage() {
             onChange={(event) => handleSensitivityChange(Number(event.target.value))}
             className="mt-3 w-full accent-orange"
             aria-label="Sensitivity level"
+            aria-valuetext={`Sensitivity level ${sensitivity} of 5`}
           />
           <div className="mt-3 grid grid-cols-5 gap-2">
             {[1, 2, 3, 4, 5].map((value) => (

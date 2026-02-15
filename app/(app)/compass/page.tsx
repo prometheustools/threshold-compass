@@ -106,6 +106,7 @@ export default function CompassPage() {
   const [lastDose, setLastDose] = useState<DoseLog | null>(null)
   const [quickLogLoading, setQuickLogLoading] = useState(false)
   const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null)
+  const [confirmationTone, setConfirmationTone] = useState<'success' | 'error'>('success')
   const [lastLoggedDoseId, setLastLoggedDoseId] = useState<string | null>(null)
 
   // Drift detection and tooltip states
@@ -176,12 +177,14 @@ export default function CompassPage() {
 
     const timer = setTimeout(() => {
       setConfirmationMessage(null)
-      // Refresh the page data after confirmation dismisses
-      window.location.reload()
+      if (confirmationTone === 'success') {
+        // Refresh the page data after successful confirmation dismisses
+        window.location.reload()
+      }
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [confirmationMessage])
+  }, [confirmationMessage, confirmationTone])
 
   useEffect(() => {
     let active = true
@@ -329,6 +332,8 @@ export default function CompassPage() {
         if (nextThresholdRange) {
           const drift = detectDrift(typedDoseRows, nextThresholdRange)
           setDriftResult(drift)
+        } else {
+          setDriftResult(null)
         }
 
         if (!active) {
@@ -377,6 +382,7 @@ export default function CompassPage() {
     if (!lastDose || !activeBatch || previewMode) return
 
     setQuickLogLoading(true)
+    setLastLoggedDoseId(null)
     try {
       const response = await fetch('/api/doses', {
         method: 'POST',
@@ -395,9 +401,11 @@ export default function CompassPage() {
 
       const data = await response.json()
       setLastLoggedDoseId(data.id)
-      setConfirmationMessage(`Dose logged — ${lastDose.amount}${lastDose.unit}`)
+      setConfirmationTone('success')
+      setConfirmationMessage(`Dose logged at ${lastDose.amount}${lastDose.unit}. Your compass will refresh shortly.`)
     } catch {
-      setConfirmationMessage('Failed to log dose')
+      setConfirmationTone('error')
+      setConfirmationMessage('Could not log that dose. Try again in a moment.')
     } finally {
       setQuickLogLoading(false)
     }
@@ -421,8 +429,11 @@ export default function CompassPage() {
   }
 
   const handleDismissConfirmation = () => {
+    const shouldRefresh = confirmationTone === 'success'
     setConfirmationMessage(null)
-    window.location.reload()
+    if (shouldRefresh) {
+      window.location.reload()
+    }
   }
 
   return (
@@ -452,7 +463,7 @@ export default function CompassPage() {
 
         {/* First-run Tooltip */}
         {showTooltip && (
-          <div className="mx-auto w-full max-w-xl rounded-card border border-ember/30 bg-elevated px-4 py-3">
+          <div className="mx-auto w-full max-w-xl rounded-card border border-ember/30 bg-elevated px-4 py-3 transition-settle">
             <p className="text-sm text-ivory mb-2">
               Your compass tracks calibration progress. Log 10 doses to discover your threshold range — the dose window where you feel effects without excess.
             </p>
@@ -462,7 +473,8 @@ export default function CompassPage() {
                 window.localStorage.setItem('compass_tooltip_seen', '1')
                 setShowTooltip(false)
               }}
-              className="text-xs text-orange font-mono uppercase tracking-wider hover:underline"
+              aria-label="Dismiss compass calibration tip"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-button px-3 text-xs font-mono uppercase tracking-wider text-orange transition-settle hover:text-ivory"
             >
               Got it
             </button>
@@ -473,30 +485,55 @@ export default function CompassPage() {
         {driftResult?.isDrifting && (
           <div className={`mx-auto w-full max-w-xl rounded-card border px-4 py-3 ${
             driftResult.severity === 'warning'
-              ? 'border-status-moderate/30 bg-status-moderate/10'
+              ? 'border-orange/40 bg-orange/10'
               : 'border-ember/30 bg-elevated'
           }`}>
-            <p className="font-mono text-xs uppercase tracking-widest text-bone mb-1">
-              {driftResult.direction === 'above' ? 'Upward Drift' : 'Downward Drift'}
+            <p className="mb-1 font-mono text-xs uppercase tracking-widest text-bone">
+              Pattern Note
             </p>
             <p className="text-sm text-ivory">{driftResult.message}</p>
+            <p className="mt-2 text-xs text-bone">
+              {driftResult.direction === 'above'
+                ? 'You are trending above range. Consider a lighter next dose or an extra rest day.'
+                : 'You are trending below range. Consider checking batch strength and recent context before adjusting.'}
+            </p>
+            <Link
+              href="/drift"
+              aria-label="Review drift guidance"
+              className="mt-3 inline-flex min-h-[44px] items-center rounded-button border border-ember/40 px-3 py-2 text-xs font-mono uppercase tracking-wider text-bone transition-settle hover:border-ember/70 hover:text-ivory"
+            >
+              Review Drift
+            </Link>
           </div>
         )}
 
         {/* Quick Log Section */}
-        {!loading && !error && !previewMode && (
+        {!loading && !error && !previewMode && activeBatch && (
           <Card padding="md" className="mt-2">
             <p className="font-mono text-xs tracking-widest uppercase text-bone mb-3">Quick Log</p>
             
             {confirmationMessage ? (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-ivory">{confirmationMessage}</span>
-                <div className="flex items-center gap-2">
+              <div
+                className={`rounded-button border px-3 py-3 transition-settle ${
+                  confirmationTone === 'success'
+                    ? 'border-status-clear/40 bg-status-clear/10'
+                    : 'border-status-elevated/40 bg-status-elevated/10'
+                }`}
+                aria-live="polite"
+              >
+                <p className={`font-mono text-[11px] uppercase tracking-widest ${
+                  confirmationTone === 'success' ? 'text-status-clear' : 'text-status-elevated'
+                }`}>
+                  {confirmationTone === 'success' ? 'Logged' : 'Not Logged'}
+                </p>
+                <p className="mt-1 text-sm text-ivory">{confirmationMessage}</p>
+                <div className="mt-3 flex items-center gap-2">
                   {lastLoggedDoseId && (
                     <button
                       type="button"
                       onClick={handleUndo}
-                      className="text-xs text-orange hover:underline"
+                      aria-label="Undo quick logged dose"
+                      className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-button border border-orange/40 px-3 py-2 text-xs font-mono uppercase tracking-wider text-orange transition-settle hover:border-orange hover:text-ivory"
                     >
                       Undo
                     </button>
@@ -504,7 +541,8 @@ export default function CompassPage() {
                   <button
                     type="button"
                     onClick={handleDismissConfirmation}
-                    className="text-xs text-ash hover:text-bone"
+                    aria-label="Dismiss quick log confirmation"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-button border border-ember/30 px-3 py-2 text-xs font-mono uppercase tracking-wider text-bone transition-settle hover:border-ember/70 hover:text-ivory"
                   >
                     Dismiss
                   </button>
@@ -518,12 +556,14 @@ export default function CompassPage() {
                 onClick={handleQuickLog}
                 loading={quickLogLoading}
                 disabled={quickLogLoading}
+                aria-label={`Quick log last dose of ${lastDose.amount}${lastDose.unit}`}
               >
                 Log Same ({lastDose.amount}{lastDose.unit})
               </Button>
             ) : (
               <Link
                 href="/log"
+                aria-label="Log your first dose"
                 className="flex min-h-[44px] items-center justify-center rounded-button border border-ember/30 bg-elevated px-4 py-3 text-sm font-medium text-bone transition-settle hover:border-ember/60 hover:text-ivory"
               >
                 Log First Dose

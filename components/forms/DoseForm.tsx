@@ -488,7 +488,40 @@ export default function DoseForm() {
         throw insertError
       }
 
-      if (!postDoseCompleted && insertedDoseId) {
+      const wasLastDiscoveryDose = selectedBatch?.calibration_status === 'calibrating' && discoveryDoseNumber === 10
+
+      if (wasLastDiscoveryDose) {
+        try {
+          const thresholdRangeResponse = await fetch('/api/threshold-range', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ batch_id: batchId }),
+          })
+
+          if (thresholdRangeResponse.ok) {
+            const range = (await thresholdRangeResponse.json()) as {
+              floor_dose: number
+              sweet_spot: number
+              ceiling_dose: number
+              confidence: number
+              qualifier: string
+            }
+            router.push(
+              `/discovery/complete?floor=${range.floor_dose}&sweet_spot=${range.sweet_spot}&ceiling=${
+                range.ceiling_dose
+              }&confidence=${range.confidence}&qualifier=${encodeURIComponent(range.qualifier)}`
+            )
+          } else {
+            console.error('Failed to fetch threshold range:', thresholdRangeResponse.statusText)
+            router.push('/compass') // Graceful degradation
+          }
+        } catch (fetchError) {
+          console.error('Error fetching threshold range:', fetchError)
+          router.push('/compass') // Graceful degradation
+        }
+      } else if (!postDoseCompleted && insertedDoseId) {
         router.push(`/log/complete?dose=${insertedDoseId}`)
       } else {
         router.push('/compass')

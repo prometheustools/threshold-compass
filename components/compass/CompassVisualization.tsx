@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useEffect, useState, type CSSProperties } from 'react'
+import { useMemo, useEffect, useId, useState, type CSSProperties } from 'react'
 import type { CalibrationStatus, CarryoverTier, NorthStar, ThresholdRange } from '@/types'
 
 export type CompassVisualizationState =
@@ -46,6 +46,8 @@ const northStarShortLabels: Record<NorthStar, string> = {
   exploration: 'EXPLORE',
 }
 
+const SETTLE_DURATION_MS = 800
+
 export default function CompassVisualization({
   state,
   northStar,
@@ -57,12 +59,14 @@ export default function CompassVisualization({
   unit,
   calibrationStatus,
 }: CompassVisualizationProps) {
+  const titleId = useId()
+  const descId = useId()
   const [animationPhase, setAnimationPhase] = useState<'searching' | 'found' | 'settled'>('searching')
 
   useEffect(() => {
     const resetTimeout = setTimeout(() => setAnimationPhase('searching'), 0)
-    const searchTimeout = setTimeout(() => setAnimationPhase('found'), 800)
-    const settleTimeout = setTimeout(() => setAnimationPhase('settled'), 1800)
+    const searchTimeout = setTimeout(() => setAnimationPhase('found'), SETTLE_DURATION_MS)
+    const settleTimeout = setTimeout(() => setAnimationPhase('settled'), SETTLE_DURATION_MS * 2)
     return () => {
       clearTimeout(resetTimeout)
       clearTimeout(searchTimeout)
@@ -71,40 +75,68 @@ export default function CompassVisualization({
   }, [state, northStar, carryoverTier])
 
   const centerText = useMemo(() => {
+    const normalizedProgress = Math.min(10, Math.max(progress || 1, 1))
+
     switch (state) {
       case 'dormant':
-        return 'CALIBRATE'
+        return 'READY'
       case 'calibrating':
-        return `DOSE ${progress || 1} OF 10`
-      case 'calibrated_rest':
-      case 'calibrated_active':
-        if (calibrationStatus === 'calibrated' && thresholdRange?.floor_dose && thresholdRange?.ceiling_dose) {
-          return `RANGE: ${thresholdRange.floor_dose}-${thresholdRange.ceiling_dose}${unit}`
-        }
-        return tierLabels[carryoverTier]
+        return `DOSE ${normalizedProgress}/10`
       case 'calibrated_rest':
         return tierLabels[carryoverTier]
       case 'calibrated_active':
         if (activeDoseHours !== null && activeDoseHours !== undefined) {
           const hours = Math.floor(activeDoseHours)
-          const minutes = Math.floor((activeDoseHours - hours) * 60)
-          return `ACTIVE — ${hours}H ${minutes}M`
+          return `ACTIVE ${hours}H`
         }
         return 'ACTIVE'
       case 'elevated_carryover':
-        return `REST — ${carryoverTier.toUpperCase()}`
+        return `REST ${tierLabels[carryoverTier]}`
       default:
         return ''
     }
   }, [state, progress, carryoverTier, activeDoseHours])
 
+  const stateHint = useMemo(() => {
+    if (state === 'dormant' && calibrationStatus === undefined) {
+      return {
+        title: 'No Batch Active',
+        description: 'Select a batch to wake the compass and start discovering your threshold.',
+      }
+    }
+
+    if (state === 'dormant') {
+      return {
+        title: 'Awaiting First Signal',
+        description: 'Log your first dose to begin calibration and unlock your personalized range.',
+      }
+    }
+
+    if (state === 'calibrating') {
+      const normalizedProgress = Math.min(10, Math.max(progress || 1, 1))
+      return {
+        title: 'Calibration In Motion',
+        description: `Dose ${normalizedProgress} of 10 is next. Keep timing and conditions steady for clean signal.`,
+      }
+    }
+
+    return null
+  }, [state, calibrationStatus, progress])
+
   const baseRotation = useMemo((): number => {
     if (state === 'dormant') return northStarDegrees[northStar]
     if (state === 'calibrating') return -90
     if (state === 'elevated_carryover') return -45
-    if (thresholdRange?.sweet_spot && thresholdRange.floor_dose && thresholdRange.ceiling_dose) {
+    if (
+      thresholdRange?.sweet_spot !== null &&
+      thresholdRange?.sweet_spot !== undefined &&
+      thresholdRange.floor_dose !== null &&
+      thresholdRange.floor_dose !== undefined &&
+      thresholdRange.ceiling_dose !== null &&
+      thresholdRange.ceiling_dose !== undefined
+    ) {
       const range = thresholdRange.ceiling_dose - thresholdRange.floor_dose
-      if (range > 0 && thresholdRange.sweet_spot) {
+      if (range > 0) {
         const normalized = (thresholdRange.sweet_spot - thresholdRange.floor_dose) / range
         return -135 + normalized * 270
       }
@@ -127,27 +159,32 @@ export default function CompassVisualization({
   const needleDriftStyle = (shouldDrift
     ? {
         transformOrigin: '100px 100px',
-        animation: 'needleDrift 800ms ease-out infinite',
+        animation: `needleDrift ${SETTLE_DURATION_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1.0) infinite alternate`,
         ['--drift-amplitude' as string]: `${driftAmplitudeDegrees}deg`,
       }
     : {
         transformOrigin: '100px 100px',
       }) as CSSProperties
 
-  const needleTransition = animationPhase === 'settled' ? 'transition-settle' : ''
   const glowIntensity = animationPhase === 'found' ? 1 : animationPhase === 'searching' ? 0.3 : 0.8
 
   const hasThresholdMarkers = state === 'calibrated_rest' || state === 'calibrated_active'
   const showSweep = animationPhase === 'searching'
-  const ringClassName = animationPhase === 'searching' ? 'animate-[compassPulse_2200ms_ease-in-out_infinite]' : ''
+  const ringStyle = animationPhase === 'searching'
+    ? ({ animation: `compassPulse ${SETTLE_DURATION_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1.0) 1` } as CSSProperties)
+    : undefined
 
   return (
-    <div className="relative w-full max-w-sm mx-auto aspect-square">
+    <div className="relative mx-auto flex w-full max-w-sm flex-col gap-4">
       <svg
         viewBox="0 0 200 200"
-        className="w-full h-full"
-        aria-label={`Compass visualization: ${state} (${unit}, ${calibrationStatus ?? 'unknown'})`}
+        className="aspect-square h-full w-full"
+        role="img"
+        aria-labelledby={`${titleId} ${descId}`}
       >
+        <title id={titleId}>Threshold Compass</title>
+        <desc id={descId}>{`Compass state ${state}, carryover tier ${carryoverTier}, calibration ${calibrationStatus ?? 'not started'}.`}</desc>
+
         <defs>
           {/* Gradient for dormant state */}
           <linearGradient id="gradient-dormant" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -155,10 +192,10 @@ export default function CompassVisualization({
             <stop offset="100%" stopColor="#8A8A8A" />
           </linearGradient>
 
-          {/* Gradient for calibrating state - orange to violet */}
+          {/* Gradient for calibrating state - orange to ember */}
           <linearGradient id="gradient-calibrating" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#E07A3E" />
-            <stop offset="100%" stopColor="#6B4E8D" />
+            <stop offset="100%" stopColor="#8B4D2C" />
           </linearGradient>
 
           {/* Gradient for calibrated states - green to orange to red */}
@@ -215,7 +252,8 @@ export default function CompassVisualization({
           stroke={state === 'elevated_carryover' ? '#D4682A' : '#2A2A2A'}
           strokeWidth="4"
           opacity={state === 'elevated_carryover' ? 0.5 : 1}
-          className={ringClassName}
+          className="transition-settle"
+          style={ringStyle}
         />
 
         {/* Active arc */}
@@ -229,7 +267,12 @@ export default function CompassVisualization({
         />
 
         {showSweep && (
-          <g style={{ transformOrigin: '100px 100px', animation: 'compassSweep 1400ms linear infinite' }}>
+          <g
+            style={{
+              transformOrigin: '100px 100px',
+              animation: `compassSweep ${SETTLE_DURATION_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1.0) 1 forwards`,
+            }}
+          >
             <line x1="100" y1="100" x2="100" y2="24" stroke="#E07A3E" strokeWidth="1.5" opacity="0.65" />
             <circle cx="100" cy="24" r="2.5" fill="#E07A3E" opacity="0.8" />
           </g>
@@ -239,7 +282,7 @@ export default function CompassVisualization({
         {hasThresholdMarkers && thresholdRange && (
           <g className="opacity-80">
             {/* Floor marker */}
-            {thresholdRange.floor_dose && (
+            {thresholdRange.floor_dose !== null && (
               <line
                 x1="100"
                 y1="25"
@@ -250,7 +293,7 @@ export default function CompassVisualization({
               />
             )}
             {/* Sweet spot marker */}
-            {thresholdRange.sweet_spot && (
+            {thresholdRange.sweet_spot !== null && (
               <line
                 x1="100"
                 y1="15"
@@ -261,7 +304,7 @@ export default function CompassVisualization({
               />
             )}
             {/* Ceiling marker */}
-            {thresholdRange.ceiling_dose && (
+            {thresholdRange.ceiling_dose !== null && (
               <line
                 x1="100"
                 y1="25"
@@ -277,7 +320,7 @@ export default function CompassVisualization({
         {/* Needle */}
         <g
           transform={`rotate(${needleRotation}, 100, 100)`}
-          className={needleTransition}
+          className="transition-settle"
           style={{ transformOrigin: '100px 100px' }}
         >
           <g style={needleDriftStyle}>
@@ -318,7 +361,7 @@ export default function CompassVisualization({
                 textAnchor="middle"
                 className="font-mono text-[8px] uppercase tracking-wider fill-orange"
               >
-                SWEET SPOT: {thresholdRange.sweet_spot}{unit}
+                SWEET SPOT: {formatDoseValue(thresholdRange.sweet_spot, unit)}{unit}
               </text>
             )}
             {thresholdRange.confidence !== null && (
@@ -337,18 +380,25 @@ export default function CompassVisualization({
         {/* Threshold zone labels (when calibrated) */}
         {hasThresholdMarkers && thresholdRange && (
           <g className="font-mono text-[7px] uppercase tracking-wider fill-bone">
-            {thresholdRange.floor_dose && (
+            {thresholdRange.floor_dose !== null && (
               <text x="35" y="95">FLOOR</text>
             )}
-            {thresholdRange.sweet_spot && (
+            {thresholdRange.sweet_spot !== null && (
               <text x="85" y="55" fill="#E07A3E">SWEET SPOT</text>
             )}
-            {thresholdRange.ceiling_dose && (
+            {thresholdRange.ceiling_dose !== null && (
               <text x="155" y="95">CEILING</text>
             )}
           </g>
         )}
       </svg>
+
+      {stateHint && (
+        <div className="rounded-button border border-ember/30 bg-elevated/60 px-4 py-3 transition-settle">
+          <p className="font-mono text-[11px] uppercase tracking-widest text-orange">{stateHint.title}</p>
+          <p className="mt-1 text-sm text-bone">{stateHint.description}</p>
+        </div>
+      )}
 
       {hasThresholdMarkers && thresholdRange && (
         <div className="flex justify-center gap-4 mt-2 px-4">
@@ -369,7 +419,7 @@ export default function CompassVisualization({
 
       {/* Calibration progress indicator */}
       {state === 'calibrating' && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
+        <div className="mx-auto">
           <div className="flex gap-1">
             {Array.from({ length: 10 }).map((_, i) => (
               <div
@@ -385,7 +435,7 @@ export default function CompassVisualization({
 
       {/* Confidence badge */}
       {thresholdRange && hasThresholdMarkers && (
-        <div className="absolute top-4 right-0">
+        <div className="absolute right-0 top-4">
           <div className={`px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider ${
             thresholdRange.confidence >= 70
               ? 'bg-status-clear/20 text-status-clear'
@@ -402,21 +452,19 @@ export default function CompassVisualization({
 
       <style jsx>{`
         @keyframes needleDrift {
-          0%,
-          100% {
+          0% {
             transform: rotate(calc(-1 * var(--drift-amplitude)));
           }
-          50% {
+          100% {
             transform: rotate(var(--drift-amplitude));
           }
         }
 
         @keyframes compassPulse {
-          0%,
-          100% {
-            opacity: 0.82;
+          0% {
+            opacity: 0.75;
           }
-          50% {
+          100% {
             opacity: 1;
           }
         }
@@ -424,14 +472,24 @@ export default function CompassVisualization({
         @keyframes compassSweep {
           from {
             transform: rotate(-180deg);
+            opacity: 0.25;
           }
           to {
-            transform: rotate(180deg);
+            transform: rotate(0deg);
+            opacity: 0.85;
           }
         }
       `}</style>
     </div>
   )
+}
+
+function formatDoseValue(value: number, unit: 'g' | 'µg'): string {
+  if (unit === 'µg') {
+    return Number.isInteger(value) ? `${value}` : value.toFixed(2)
+  }
+
+  return value.toFixed(2)
 }
 
 // Utility function to create arc path

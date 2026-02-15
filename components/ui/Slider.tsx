@@ -7,9 +7,10 @@ interface SliderProps {
   step?: number
   value: number
   onChange: (value: number) => void
+  disabled?: boolean
 }
 
-export default function Slider({ label, min, max, step = 1, value, onChange }: SliderProps) {
+export default function Slider({ label, min, max, step = 1, value, onChange, disabled }: SliderProps) {
   const percentage = ((value - min) / (max - min)) * 100
 
   return (
@@ -36,7 +37,8 @@ export default function Slider({ label, min, max, step = 1, value, onChange }: S
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute w-full h-8 opacity-0 cursor-pointer"
+          disabled={disabled}
+          className={`absolute w-full h-8 opacity-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           aria-label={label}
           aria-valuemin={min}
           aria-valuemax={max}

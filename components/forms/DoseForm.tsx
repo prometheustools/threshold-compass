@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, Check, Minus, Plus, Loader2 } from 'lucide-react'
 import type {
   Batch,
   ContextTag,
@@ -80,12 +80,27 @@ const contextTagOptions: Array<{ value: ContextTag; label: string }> = [
 
 const medicationStorageKey = 'threshold_compass_medications'
 
+const MAX_DOSE_MG = 5000
+const MAX_DOSE_UG = 1000
+
 type MedicationRiskLevel = 'high' | 'moderate'
 
 interface MedicationRisk {
   medication: string
   level: MedicationRiskLevel
   reason: string
+}
+
+interface ValidationError {
+  amount?: string
+}
+
+interface SuccessState {
+  amount: number
+  unit: string
+  batchName: string
+  doseNumber: number | null
+  batchTally: number
 }
 
 const medicationRiskMatchers: Array<{ pattern: RegExp; level: MedicationRiskLevel; reason: string }> = [
@@ -183,6 +198,33 @@ function asAmountString(value: number): string {
   return value.toFixed(2)
 }
 
+function validateAmount(value: string, unit: 'mg' | 'ug'): ValidationError {
+  const parsed = Number.parseFloat(value)
+  
+  if (!value || value.trim() === '') {
+    return { amount: 'Enter a dose amount' }
+  }
+  
+  if (!Number.isFinite(parsed)) {
+    return { amount: 'Enter a valid number' }
+  }
+  
+  if (parsed <= 0) {
+    return { amount: 'Amount must be greater than zero' }
+  }
+  
+  if (parsed < 0.01) {
+    return { amount: 'Amount too small' }
+  }
+  
+  const maxAmount = unit === 'ug' ? MAX_DOSE_UG : MAX_DOSE_MG
+  if (parsed > maxAmount) {
+    return { amount: `Amount exceeds maximum (${maxAmount} ${unit})` }
+  }
+  
+  return {}
+}
+
 export default function DoseForm() {
   const router = useRouter()
   const setUser = useAppStore((state) => state.setUser)
@@ -191,6 +233,9 @@ export default function DoseForm() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<ValidationError>({})
+  const [success, setSuccess] = useState<SuccessState | null>(null)
+  const [batchTally, setBatchTally] = useState(0)
 
   const [user, setUserState] = useState<User | null>(null)
   const [batches, setBatches] = useState<Batch[]>([])
@@ -229,6 +274,12 @@ export default function DoseForm() {
   const doseUnit: 'mg' | 'ug' = selectedBatch?.dose_unit === 'ug' ? 'ug' : 'mg'
   const unitLabel = doseUnit === 'ug' ? 'µg' : 'mg'
 
+  // Real-time validation
+  useEffect(() => {
+    const errors = validateAmount(amount, doseUnit)
+    setValidationErrors(errors)
+  }, [amount, doseUnit])
+
   useEffect(() => {
     let active = true
 
@@ -239,7 +290,6 @@ export default function DoseForm() {
       try {
         const supabase = createClient()
         
-        // Get anonymous user ID
         const anonUserId = await resolveCurrentUserId(supabase)
         
         if (!anonUserId) {
@@ -358,6 +408,44 @@ export default function DoseForm() {
     }
   }, [selectedBatch, user])
 
+  // Load batch tally when batch changes
+  useEffect(() => {
+    let active = true
+
+    const loadBatchTally = async () => {
+      if (!selectedBatch || !user) {
+        setBatchTally(0)
+        return
+      }
+
+      try {
+        const supabase = createClient()
+        const anonUserId = await resolveCurrentUserId(supabase)
+        if (!anonUserId) return
+
+        const { count, error } = await supabase
+          .from('dose_logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', anonUserId)
+          .eq('batch_id', selectedBatch.id)
+
+        if (!active) return
+
+        if (!error && typeof count === 'number') {
+          setBatchTally(count)
+        }
+      } catch {
+        // Silently fail - tally is not critical
+      }
+    }
+
+    void loadBatchTally()
+
+    return () => {
+      active = false
+    }
+  }, [selectedBatch, user])
+
   useEffect(() => {
     setMedications(loadMedicationsFromStorage())
   }, [])
@@ -372,6 +460,31 @@ export default function DoseForm() {
     const next = Math.max(0, Math.round((normalized + delta) * 100) / 100)
     setAmount(asAmountString(next))
   }
+
+  const handleAmountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    // Allow empty, numbers, and single decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setAmount(value)
+    }
+  }
+
+  const handleAmountBlur = () => {
+    const parsed = Number.parseFloat(amount)
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      setAmount(asAmountString(parsed))
+    } else {
+      setAmount('0.00')
+    }
+  }
+
+  const isFormValid = useMemo(() => {
+    const amountError = validateAmount(amount, doseUnit)
+    if (amountError.amount) return false
+    if (!batchId) return false
+    if (hasMedicationRisks && !medicationAcknowledged) return false
+    return true
+  }, [amount, doseUnit, batchId, hasMedicationRisks, medicationAcknowledged])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -392,8 +505,10 @@ export default function DoseForm() {
     }
 
     const parsedAmount = Number.parseFloat(amount)
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError('Amount must be greater than zero.')
+    const amountValidation = validateAmount(amount, doseUnit)
+    
+    if (amountValidation.amount) {
+      setValidationErrors(amountValidation)
       return
     }
 
@@ -475,7 +590,6 @@ export default function DoseForm() {
         insertedDoseId = fullInsert.data?.id ?? null
       }
 
-      // Schema may be partially migrated. Fall back to legacy payload so logging still works.
       if (insertError && isSchemaCacheColumnMissingError(insertError)) {
         const fallback = await supabase.from('dose_logs').insert(legacyPayload).select('id').single()
         insertError = fallback.error
@@ -488,45 +602,61 @@ export default function DoseForm() {
         throw insertError
       }
 
-      const wasLastDiscoveryDose = selectedBatch?.calibration_status === 'calibrating' && discoveryDoseNumber === 10
+      // Show success confirmation
+      const newTally = batchTally + 1
+      setSuccess({
+        amount: parsedAmount,
+        unit: unitLabel,
+        batchName: selectedBatch.name,
+        doseNumber: discoveryDoseNumber,
+        batchTally: newTally,
+      })
 
-      if (wasLastDiscoveryDose) {
-        try {
-          const thresholdRangeResponse = await fetch('/api/threshold-range', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ batch_id: batchId }),
-          })
+      // Delay navigation to show success
+      setTimeout(() => {
+        const wasLastDiscoveryDose = selectedBatch?.calibration_status === 'calibrating' && discoveryDoseNumber === 10
 
-          if (thresholdRangeResponse.ok) {
-            const range = (await thresholdRangeResponse.json()) as {
-              floor_dose: number
-              sweet_spot: number
-              ceiling_dose: number
-              confidence: number
-              qualifier: string
+        if (wasLastDiscoveryDose) {
+          void (async () => {
+            try {
+              const thresholdRangeResponse = await fetch('/api/threshold-range', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ batch_id: batchId }),
+              })
+
+              if (thresholdRangeResponse.ok) {
+                const range = (await thresholdRangeResponse.json()) as {
+                  floor_dose: number
+                  sweet_spot: number
+                  ceiling_dose: number
+                  confidence: number
+                  qualifier: string
+                }
+                router.push(
+                  `/discovery/complete?floor=${range.floor_dose}&sweet_spot=${range.sweet_spot}&ceiling=${
+                    range.ceiling_dose
+                  }&confidence=${range.confidence}&qualifier=${encodeURIComponent(range.qualifier)}`
+                )
+              } else {
+                console.error('Failed to fetch threshold range:', thresholdRangeResponse.statusText)
+                router.push('/compass')
+              }
+            } catch (fetchError) {
+              console.error('Error fetching threshold range:', fetchError)
+              router.push('/compass')
             }
-            router.push(
-              `/discovery/complete?floor=${range.floor_dose}&sweet_spot=${range.sweet_spot}&ceiling=${
-                range.ceiling_dose
-              }&confidence=${range.confidence}&qualifier=${encodeURIComponent(range.qualifier)}`
-            )
-          } else {
-            console.error('Failed to fetch threshold range:', thresholdRangeResponse.statusText)
-            router.push('/compass') // Graceful degradation
-          }
-        } catch (fetchError) {
-          console.error('Error fetching threshold range:', fetchError)
-          router.push('/compass') // Graceful degradation
+          })()
+        } else if (!postDoseCompleted && insertedDoseId) {
+          router.push(`/log/complete?dose=${insertedDoseId}`)
+        } else {
+          router.push('/compass')
         }
-      } else if (!postDoseCompleted && insertedDoseId) {
-        router.push(`/log/complete?dose=${insertedDoseId}`)
-      } else {
-        router.push('/compass')
-      }
-      router.refresh()
+        router.refresh()
+      }, 1500)
+
     } catch (submitError) {
       setError(getErrorMessage(submitError))
       setSubmitting(false)
@@ -539,7 +669,7 @@ export default function DoseForm() {
   if (loading) {
     return (
       <Card padding="lg">
-        <LoadingState message="loading" size="md" />
+        <LoadingState message="Loading form" size="md" />
       </Card>
     )
   }
@@ -549,15 +679,46 @@ export default function DoseForm() {
       <Card padding="lg">
         <p className="font-mono text-xs tracking-widest uppercase text-status-elevated">No batch available</p>
         <p className="mt-2 text-sm text-bone">Create or activate a batch before logging a dose.</p>
-        <Button type="button" className="mt-4 w-full" onClick={() => router.push('/batch')}>
+        <Button type="button" className="mt-4 w-full min-h-[44px]" onClick={() => router.push('/batch')}>
           Open Batch Manager
         </Button>
       </Card>
     )
   }
 
+  // Success confirmation overlay
+  if (success) {
+    return (
+      <Card padding="lg" className="border-status-clear/40 bg-status-clear/10">
+        <div className="text-center py-8">
+          <div className="mx-auto w-16 h-16 rounded-full bg-status-clear/20 flex items-center justify-center mb-4">
+            <Check className="w-8 h-8 text-status-clear" />
+          </div>
+          <p className="font-mono text-xs tracking-widest uppercase text-status-clear mb-2">Dose Logged</p>
+          <p className="text-3xl font-bold text-ivory mb-1">
+            {success.amount} <span className="text-lg text-bone">{success.unit}</span>
+          </p>
+          <p className="text-sm text-bone mb-4">{success.batchName}</p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-elevated border border-ember/30">
+            <span className="font-mono text-xs uppercase tracking-wider text-bone">Batch tally:</span>
+            <span className="font-mono text-sm font-bold text-orange">{success.batchTally}</span>
+          </div>
+          {success.doseNumber && (
+            <p className="mt-4 font-mono text-xs text-ash">
+              Discovery dose {success.doseNumber} of 10
+            </p>
+          )}
+          <div className="mt-6 flex items-center justify-center gap-2 text-ash">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Redirecting...</span>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 pb-24">
       {selectedBatch?.calibration_status === 'calibrating' && (
         <Card className="border-status-mild/40 bg-status-mild/10">
           <p className="font-mono text-xs tracking-widest uppercase text-status-mild">Discovery Protocol</p>
@@ -578,7 +739,8 @@ export default function DoseForm() {
                   key={preset}
                   type="button"
                   onClick={() => setAmount(asAmountString(preset))}
-                  className={`rounded-button border px-2 py-2 font-mono text-sm transition-settle hover:border-orange ${
+                  disabled={submitting}
+                  className={`min-h-[44px] rounded-button border px-2 py-2 font-mono text-sm transition-settle hover:border-orange disabled:opacity-50 ${
                     Number(amount) === preset 
                       ? 'border-orange bg-orange/10 text-orange' 
                       : 'border-ember/30 text-ivory'
@@ -590,40 +752,46 @@ export default function DoseForm() {
             </div>
           </div>
 
-          {/* Amount Input */}
-          <label className="block">
-            <span className="font-mono text-xs tracking-widest uppercase text-bone">Amount</span>
-            <div className="mt-2 flex items-stretch gap-2">
-              <button
-                type="button"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated text-ivory transition-settle hover:border-ember/80"
-                onClick={() => adjustAmount(doseUnit === 'ug' ? -1 : -5)}
-                aria-label={`Decrease amount by ${doseUnit === 'ug' ? '1' : '5'}`}
-              >
-                <Minus size={16} />
-              </button>
+          {/* Amount Input with Inline Validation */}
+          <div>
+            <label className="block">
+              <span className="font-mono text-xs tracking-widest uppercase text-bone">Amount</span>
+              <div className="mt-2 flex items-stretch gap-2">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated text-ivory transition-settle hover:border-ember/80 disabled:opacity-50"
+                  onClick={() => adjustAmount(doseUnit === 'ug' ? -1 : -5)}
+                  aria-label={`Decrease amount by ${doseUnit === 'ug' ? '1' : '5'}`}
+                >
+                  <Minus size={16} />
+                </button>
 
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                className="font-mono text-center"
-                aria-label="Dose amount"
-              />
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  onBlur={handleAmountBlur}
+                  error={validationErrors.amount}
+                  className="font-mono text-center"
+                  aria-label="Dose amount"
+                  disabled={submitting}
+                />
 
-              <button
-                type="button"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated text-ivory transition-settle hover:border-ember/80"
-                onClick={() => adjustAmount(doseUnit === 'ug' ? 1 : 5)}
-                aria-label={`Increase amount by ${doseUnit === 'ug' ? '1' : '5'}`}
-              >
-                <Plus size={16} />
-              </button>
-            </div>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-ember/40 bg-elevated text-ivory transition-settle hover:border-ember/80 disabled:opacity-50"
+                  onClick={() => adjustAmount(doseUnit === 'ug' ? 1 : 5)}
+                  aria-label={`Increase amount by ${doseUnit === 'ug' ? '1' : '5'}`}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </label>
             <p className="mt-2 font-mono text-xs tracking-widest uppercase text-bone">Unit: {unitLabel}</p>
-          </label>
+          </div>
 
           <Select
             label="Batch"
@@ -633,7 +801,15 @@ export default function DoseForm() {
               value: batch.id,
               label: `${batch.name}${batch.is_active ? '' : ' (inactive)'}`,
             }))}
+            disabled={submitting}
           />
+
+          {selectedBatch && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-button bg-elevated/50 border border-ember/20">
+              <span className="font-mono text-xs uppercase tracking-wider text-bone">Batch tally</span>
+              <span className="font-mono text-sm font-bold text-orange">{batchTally}</span>
+            </div>
+          )}
 
           {selectedBatch && !selectedBatch.is_active && (
             <p className="text-xs text-status-mild">
@@ -648,8 +824,9 @@ export default function DoseForm() {
                 <button
                   key={option.value}
                   type="button"
+                  disabled={submitting}
                   onClick={() => setPreparation(option.value)}
-                  className={`rounded-button border px-2 py-2 font-mono text-[11px] uppercase tracking-wide transition-settle ${
+                  className={`min-h-[44px] rounded-button border px-2 py-2 font-mono text-[11px] uppercase tracking-wide transition-settle disabled:opacity-50 ${
                     preparation === option.value
                       ? 'border-orange bg-orange/10 text-orange'
                       : 'border-ember/30 bg-elevated text-bone hover:border-ember/80'
@@ -688,18 +865,21 @@ export default function DoseForm() {
               type="checkbox"
               checked={medicationAcknowledged}
               onChange={(event) => setMedicationAcknowledged(event.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-ember/30 bg-elevated"
+              disabled={submitting}
+              className="mt-0.5 h-4 w-4 min-h-[16px] min-w-[16px] rounded border-ember/30 bg-elevated"
             />
             <span>I reviewed this warning and understand this app does not replace medical advice.</span>
           </label>
         </Card>
       )}
 
+      {/* Optional Context Section - Collapsed by default */}
       <Card padding="lg">
         <button
           type="button"
+          disabled={submitting}
           onClick={() => setShowContext((open) => !open)}
-          className="flex min-h-[44px] w-full items-center justify-between rounded-button border border-ember/30 bg-elevated px-4 py-2 font-mono text-xs tracking-widest uppercase text-bone transition-settle hover:border-ember/80"
+          className="flex min-h-[44px] w-full items-center justify-between rounded-button border border-ember/30 bg-elevated px-4 py-2 font-mono text-xs tracking-widest uppercase text-bone transition-settle hover:border-ember/80 disabled:opacity-50"
         >
           Optional Context
           {showContext ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -715,6 +895,7 @@ export default function DoseForm() {
                 { value: '', label: 'Select one' },
                 ...sleepOptions.map((option) => ({ value: option.value, label: option.label })),
               ]}
+              disabled={submitting}
             />
 
             <Select
@@ -725,6 +906,7 @@ export default function DoseForm() {
                 { value: '', label: 'Select one' },
                 ...energyOptions.map((option) => ({ value: option.value, label: option.label })),
               ]}
+              disabled={submitting}
             />
 
             <Select
@@ -735,6 +917,7 @@ export default function DoseForm() {
                 { value: '', label: 'Select one' },
                 ...stressOptions.map((option) => ({ value: option.value, label: option.label })),
               ]}
+              disabled={submitting}
             />
 
             <label className="block">
@@ -742,19 +925,22 @@ export default function DoseForm() {
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
+                disabled={submitting}
                 rows={3}
-                className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none"
+                className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none disabled:opacity-50"
               />
             </label>
           </div>
         )}
       </Card>
 
+      {/* Protocol Section - Collapsed by default */}
       <Card padding="lg">
         <button
           type="button"
+          disabled={submitting}
           onClick={() => setShowProtocol((open) => !open)}
-          className="flex min-h-[44px] w-full items-center justify-between rounded-button border border-ember/30 bg-elevated px-4 py-2 font-mono text-xs tracking-widest uppercase text-bone transition-settle hover:border-ember/80"
+          className="flex min-h-[44px] w-full items-center justify-between rounded-button border border-ember/30 bg-elevated px-4 py-2 font-mono text-xs tracking-widest uppercase text-bone transition-settle hover:border-ember/80 disabled:opacity-50"
         >
           Protocol + STI (Optional)
           {showProtocol ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -768,6 +954,7 @@ export default function DoseForm() {
                 type="number"
                 min={1}
                 max={5}
+                disabled={submitting}
                 value={preDoseMood}
                 onChange={(event) => {
                   const next = Number(event.target.value)
@@ -777,7 +964,7 @@ export default function DoseForm() {
                   }
                   setPreDoseMood(Math.min(5, Math.max(1, next)))
                 }}
-                className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none"
+                className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none disabled:opacity-50"
               />
             </label>
 
@@ -786,8 +973,9 @@ export default function DoseForm() {
               <textarea
                 value={intention}
                 onChange={(event) => setIntention(event.target.value)}
+                disabled={submitting}
                 rows={2}
-                className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none"
+                className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none disabled:opacity-50"
               />
             </label>
 
@@ -799,6 +987,7 @@ export default function DoseForm() {
                 { value: '', label: 'Select one' },
                 ...timingTagOptions.map((option) => ({ value: option.value, label: option.label })),
               ]}
+              disabled={submitting}
             />
 
             <div>
@@ -810,6 +999,7 @@ export default function DoseForm() {
                     <button
                       key={option.value}
                       type="button"
+                      disabled={submitting}
                       onClick={() => {
                         setContextTags((prev) =>
                           prev.includes(option.value)
@@ -817,7 +1007,7 @@ export default function DoseForm() {
                             : [...prev, option.value]
                         )
                       }}
-                      className={`rounded-button border px-2 py-2 font-mono text-[11px] uppercase tracking-wide transition-settle ${
+                      className={`min-h-[44px] rounded-button border px-2 py-2 font-mono text-[11px] uppercase tracking-wide transition-settle disabled:opacity-50 ${
                         active
                           ? 'border-orange bg-orange/10 text-orange'
                           : 'border-ember/30 bg-elevated text-bone hover:border-ember/80'
@@ -830,12 +1020,13 @@ export default function DoseForm() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-bone">
+            <label className="flex items-center gap-2 text-sm text-bone min-h-[44px]">
               <input
                 type="checkbox"
+                disabled={submitting}
                 checked={postDoseCompleted}
                 onChange={(event) => setPostDoseCompleted(event.target.checked)}
-                className="h-4 w-4 rounded border-ember/30 bg-elevated"
+                className="h-4 w-4 min-h-[16px] min-w-[16px] rounded border-ember/30 bg-elevated"
               />
               Include post-dose STI scores now
             </label>
@@ -848,6 +1039,7 @@ export default function DoseForm() {
                     type="number"
                     min={1}
                     max={5}
+                    disabled={submitting}
                     value={postDoseMood}
                     onChange={(event) => {
                       const next = Number(event.target.value)
@@ -857,7 +1049,7 @@ export default function DoseForm() {
                       }
                       setPostDoseMood(Math.min(5, Math.max(1, next)))
                     }}
-                    className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none"
+                    className="mt-2 w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory focus:border-orange focus:outline-none disabled:opacity-50"
                   />
                 </label>
 
@@ -870,6 +1062,7 @@ export default function DoseForm() {
                     min={0}
                     max={10}
                     step={1}
+                    disabled={submitting}
                     value={signalScore}
                     onChange={(event) => setSignalScore(Number(event.target.value))}
                     className="mt-2 w-full"
@@ -885,6 +1078,7 @@ export default function DoseForm() {
                     min={0}
                     max={10}
                     step={1}
+                    disabled={submitting}
                     value={textureScore}
                     onChange={(event) => setTextureScore(Number(event.target.value))}
                     className="mt-2 w-full"
@@ -900,6 +1094,7 @@ export default function DoseForm() {
                     min={0}
                     max={10}
                     step={1}
+                    disabled={submitting}
                     value={interferenceScore}
                     onChange={(event) => setInterferenceScore(Number(event.target.value))}
                     className="mt-2 w-full"
@@ -914,6 +1109,7 @@ export default function DoseForm() {
                     { value: '', label: 'Select one' },
                     ...thresholdFeelOptions.map((option) => ({ value: option.value, label: option.label })),
                   ]}
+                  disabled={submitting}
                 />
               </div>
             )}
@@ -921,11 +1117,31 @@ export default function DoseForm() {
         )}
       </Card>
 
-      {error && <p className="text-sm text-status-elevated">{error}</p>}
+      {error && (
+        <div className="rounded-button border border-status-elevated/40 bg-status-elevated/10 px-4 py-3">
+          <p className="text-sm text-status-elevated">{error}</p>
+        </div>
+      )}
 
-      <Button type="submit" size="lg" className="w-full" loading={submitting}>
-        {submitting ? 'Logging...' : 'Log Dose'}
-      </Button>
+      {/* Sticky Submit Footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-base/95 backdrop-blur-md border-t border-ember/10 px-4 py-4">
+        <div className="max-w-xl mx-auto">
+          <Button 
+            type="submit" 
+            size="lg" 
+            className="w-full min-h-[56px]" 
+            loading={submitting}
+            disabled={!isFormValid}
+          >
+            {submitting ? 'Logging dose...' : 'Log Dose'}
+          </Button>
+          {!isFormValid && !submitting && (
+            <p className="mt-2 text-center text-xs text-ash">
+              {!batchId ? 'Select a batch to continue' : validationErrors.amount ? validationErrors.amount : hasMedicationRisks ? 'Acknowledge medication warning' : ''}
+            </p>
+          )}
+        </div>
+      </div>
     </form>
   )
 }

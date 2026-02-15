@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import Card from '@/components/ui/Card'
@@ -133,6 +134,9 @@ export default function ReflectPage() {
   return (
     <div className="min-h-screen bg-base px-4 py-8 text-ivory">
       <div className="mx-auto w-full max-w-xl space-y-4">
+        <Link href="/compass" className="text-sm text-bone hover:text-ivory">
+          ← Compass
+        </Link>
         <div>
           <p className="font-mono text-xs tracking-widest uppercase text-bone">Reflect</p>
           <h1 className="mt-2 text-2xl font-sans">Post-Dose Reflection</h1>

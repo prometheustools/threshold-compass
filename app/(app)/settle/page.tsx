@@ -6,6 +6,9 @@ import { Heart, Wind, Mountain, HelpCircle } from 'lucide-react'
 export default function SettlePage() {
   return (
     <div className="min-h-screen bg-base p-6 flex flex-col items-center justify-center animate-[fadeIn_800ms_ease-out]">
+      <Link href="/compass" className="self-start text-sm text-bone hover:text-ivory mb-4">
+        ← Compass
+      </Link>
       <h1 className="font-mono text-sm tracking-widest uppercase text-bone mb-12">
         Settle Mode
       </h1>

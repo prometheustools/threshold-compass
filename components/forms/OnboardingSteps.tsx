@@ -11,8 +11,8 @@ import {
   Gauge, 
   Target,
   ArrowRight,
-  Sparkles,
-  SkipForward
+  SkipForward,
+  Loader2
 } from 'lucide-react'
 import type { BatchForm, EstimatedPotency, GuidanceLevel, NorthStar, SubstanceType } from '@/types'
 import { createClient } from '@/lib/supabase/client'
@@ -60,28 +60,25 @@ const stepConfig = [
     label: 'Review', 
     icon: Check,
     title: 'Ready to begin',
-    description: 'Review your settings and enter the Compass.'
+    description: 'Review your settings before entering the Compass.'
   },
 ] as const
 
-const substanceOptions: Array<{ value: SubstanceType; label: string; description: string; color: string }> = [
+const substanceOptions: Array<{ value: SubstanceType; label: string; description: string }> = [
   {
     value: 'psilocybin',
     label: 'Psilocybin mushrooms',
     description: 'Measure in grams. Track by batch for potency variations.',
-    color: 'from-emerald-500/20 to-teal-500/20',
   },
   { 
     value: 'lsd', 
     label: 'LSD', 
     description: 'Measure in micrograms. More consistent potency.',
-    color: 'from-violet-500/20 to-purple-500/20',
   },
   { 
     value: 'other', 
     label: 'Other substance', 
     description: 'Custom tracking with the same scientific approach.',
-    color: 'from-orange-500/20 to-amber-500/20',
   },
 ]
 
@@ -93,12 +90,12 @@ const sensitivityOptions: Array<{ value: number; title: string; description: str
   { value: 5, title: 'Very High', description: 'Small amounts affect me strongly' },
 ]
 
-const northStarOptions: Array<{ value: NorthStar; label: string; description: string; emoji: string }> = [
-  { value: 'clarity', label: 'Clarity', description: 'Sharpen attention and mental focus', emoji: '✨' },
-  { value: 'connection', label: 'Connection', description: 'Deepen empathy and relationships', emoji: '💫' },
-  { value: 'creativity', label: 'Creativity', description: 'Open associative thinking', emoji: '🎨' },
-  { value: 'calm', label: 'Calm', description: 'Settle nervous system', emoji: '🌊' },
-  { value: 'exploration', label: 'Exploration', description: 'Learn through structured discovery', emoji: '🔬' },
+const northStarOptions: Array<{ value: NorthStar; label: string; description: string }> = [
+  { value: 'clarity', label: 'Clarity', description: 'Sharpen attention and mental focus' },
+  { value: 'connection', label: 'Connection', description: 'Deepen empathy and relationships' },
+  { value: 'creativity', label: 'Creativity', description: 'Open associative thinking' },
+  { value: 'calm', label: 'Calm', description: 'Settle nervous system' },
+  { value: 'exploration', label: 'Exploration', description: 'Learn through structured discovery' },
 ]
 
 const guidanceOptions: Array<{ value: GuidanceLevel; label: string; description: string; level: 'full' | 'medium' | 'minimal' }> = [
@@ -331,13 +328,14 @@ export default function OnboardingSteps() {
         }`}
       >
         <div>
-          <h1 className="font-mono text-2xl text-ivory">Welcome, trailblazer.</h1>
+          <h1 className="font-mono text-2xl text-ivory">Welcome to the Compass.</h1>
           <p className="mx-auto mt-4 max-w-md text-sm text-bone">
-            You are not signing up. You are initiating a journey of self-calibration. This instrument is your bearing
-            to true north — designed not for following generic protocols, but for mapping your unique inner landscape.
+            This is a precision instrument for mapping your unique threshold. 
+            Not a one-size-fits-all protocol, but a systematic approach to understanding 
+            your personal response landscape.
           </p>
-          <Button className="mt-8" onClick={() => setStep(1)}>
-            Begin Calibration
+          <Button className="mt-8 min-h-[48px]" onClick={() => setStep(1)}>
+            Begin Setup
           </Button>
         </div>
       </div>
@@ -350,7 +348,7 @@ export default function OnboardingSteps() {
       <div className="fixed top-0 left-0 right-0 z-50">
         <div className="h-1 bg-elevated">
           <div 
-            className="h-full bg-gradient-to-r from-orange to-ember transition-all duration-500 ease-out"
+            className="h-full bg-gradient-to-r from-orange to-ember transition-all duration-[800ms] ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -367,7 +365,8 @@ export default function OnboardingSteps() {
             <span className="text-xs text-ash">Step {step} of {TOTAL_STEPS}</span>
             <button
               onClick={handleCheckOutApp}
-              className="text-xs text-ash hover:text-ivory transition-colors flex items-center gap-1"
+              disabled={submitting}
+              className="text-xs text-ash hover:text-ivory transition-colors flex items-center gap-1 disabled:opacity-50 min-h-[44px] px-2"
             >
               Check out app <ArrowRight className="w-3 h-3" />
             </button>
@@ -380,7 +379,7 @@ export default function OnboardingSteps() {
         <div className="max-w-2xl mx-auto">
           {/* Step Title */}
           <div className="text-center mb-8 sm:mb-12">
-            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-orange/20 to-ember/20 border border-orange/30 mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-orange/10 border border-orange/20 mb-4">
               <StepIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange" />
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-2">
@@ -398,7 +397,7 @@ export default function OnboardingSteps() {
               <button
                 type="button"
                 onClick={handleCheckOutApp}
-                className="mt-3 text-xs uppercase tracking-wide text-bone hover:text-ivory"
+                className="mt-3 text-xs uppercase tracking-wide text-bone hover:text-ivory min-h-[44px]"
               >
                 Open preview instead
               </button>
@@ -413,14 +412,15 @@ export default function OnboardingSteps() {
                 {substanceOptions.map((option) => (
                   <button
                     key={option.value}
+                    disabled={submitting}
                     onClick={() => setState(prev => ({ 
                       ...prev, 
                       substance_type: option.value,
                       other_substance: option.value === 'other' ? prev.other_substance : ''
                     }))}
-                    className={`group relative p-5 sm:p-6 rounded-2xl border-2 text-left transition-all duration-300 ${
+                    className={`group relative p-5 sm:p-6 rounded-2xl border-2 text-left transition-all duration-[800ms] ease-out min-h-[44px] disabled:opacity-50 ${
                       state.substance_type === option.value
-                        ? 'border-orange bg-gradient-to-br ' + option.color
+                        ? 'border-orange bg-orange/5'
                         : 'border-ember/20 bg-surface hover:border-ember/40'
                     }`}
                   >
@@ -444,6 +444,7 @@ export default function OnboardingSteps() {
                       onChange={(e) => setState(prev => ({ ...prev, other_substance: e.target.value }))}
                       placeholder="e.g., Mescaline, DMT, etc."
                       className="bg-elevated"
+                      disabled={submitting}
                     />
                   </div>
                 )}
@@ -464,6 +465,7 @@ export default function OnboardingSteps() {
                     step={1}
                     value={state.sensitivity}
                     onChange={(value) => setState(prev => ({ ...prev, sensitivity: value }))}
+                    disabled={submitting}
                   />
                   <div className="flex justify-between mt-2 text-xs text-ash">
                     <span>Very Low</span>
@@ -476,8 +478,9 @@ export default function OnboardingSteps() {
                   {sensitivityOptions.map((option) => (
                     <button
                       key={option.value}
+                      disabled={submitting}
                       onClick={() => setState(prev => ({ ...prev, sensitivity: option.value }))}
-                      className={`p-4 sm:p-5 rounded-xl border text-left transition-all duration-300 ${
+                      className={`p-4 sm:p-5 rounded-xl border text-left transition-all duration-[800ms] ease-out min-h-[44px] ${
                         state.sensitivity === option.value
                           ? 'border-orange bg-orange/10'
                           : 'border-ember/20 bg-surface hover:border-ember/40'
@@ -510,14 +513,14 @@ export default function OnboardingSteps() {
                     {northStarOptions.map((option) => (
                       <button
                         key={option.value}
+                        disabled={submitting}
                         onClick={() => setState(prev => ({ ...prev, north_star: option.value }))}
-                        className={`p-4 sm:p-5 rounded-xl border text-left transition-all duration-300 ${
+                        className={`p-4 sm:p-5 rounded-xl border text-left transition-all duration-[800ms] ease-out min-h-[44px] ${
                           state.north_star === option.value
                             ? 'border-orange bg-orange/10'
                             : 'border-ember/20 bg-surface hover:border-ember/40'
                         }`}
                       >
-                        <div className="text-2xl mb-2">{option.emoji}</div>
                         <h4 className="font-semibold mb-1">{option.label}</h4>
                         <p className="text-xs text-bone">{option.description}</p>
                       </button>
@@ -532,8 +535,9 @@ export default function OnboardingSteps() {
                     {guidanceOptions.map((option) => (
                       <button
                         key={option.value}
+                        disabled={submitting}
                         onClick={() => setState(prev => ({ ...prev, guidance_level: option.value }))}
-                        className={`w-full p-4 sm:p-5 rounded-xl border text-left transition-all duration-300 flex items-center gap-4 ${
+                        className={`w-full p-4 sm:p-5 rounded-xl border text-left transition-all duration-[800ms] ease-out flex items-center gap-4 min-h-[44px] ${
                           state.guidance_level === option.value
                             ? 'border-orange bg-orange/10'
                             : 'border-ember/20 bg-surface hover:border-ember/40'
@@ -577,6 +581,7 @@ export default function OnboardingSteps() {
                             first_batch: { ...prev.first_batch, name: e.target.value }
                           }))}
                           placeholder="e.g., Golden Teacher Batch A"
+                          disabled={submitting}
                         />
 
                         <Select
@@ -587,6 +592,7 @@ export default function OnboardingSteps() {
                             first_batch: { ...prev.first_batch, form: e.target.value as BatchForm }
                           }))}
                           options={batchFormOptions}
+                          disabled={submitting}
                         />
 
                         <div>
@@ -595,11 +601,12 @@ export default function OnboardingSteps() {
                             {potencyOptions.map((option) => (
                               <button
                                 key={option.value}
+                                disabled={submitting}
                                 onClick={() => setState(prev => ({
                                   ...prev,
                                   first_batch: { ...prev.first_batch, estimated_potency: option.value }
                                 }))}
-                                className={`p-3 rounded-lg border text-sm transition-all ${
+                                className={`p-3 rounded-lg border text-sm transition-all min-h-[44px] ${
                                   state.first_batch.estimated_potency === option.value
                                     ? 'border-orange bg-orange/10 text-orange'
                                     : 'border-ember/20 bg-elevated hover:border-ember/40'
@@ -621,6 +628,7 @@ export default function OnboardingSteps() {
                             }))}
                             placeholder="Where did you get this? Any handling notes?"
                             rows={3}
+                            disabled={submitting}
                             className="w-full px-4 py-3 rounded-lg bg-elevated border border-ember/30 text-ivory placeholder:text-ash focus:border-orange focus:outline-none resize-none"
                           />
                         </div>
@@ -630,7 +638,8 @@ export default function OnboardingSteps() {
                     {/* Skip Option */}
                     <button
                       onClick={handleSkipBatch}
-                      className="w-full p-4 rounded-xl border border-dashed border-ember/30 text-ash hover:text-ivory hover:border-ember/50 transition-all flex items-center justify-center gap-2"
+                      disabled={submitting}
+                      className="w-full p-4 rounded-xl border border-dashed border-ember/30 text-ash hover:text-ivory hover:border-ember/50 transition-all flex items-center justify-center gap-2 min-h-[44px]"
                     >
                       <SkipForward className="w-4 h-4" />
                       Skip batch creation for now
@@ -647,7 +656,8 @@ export default function OnboardingSteps() {
                     </p>
                     <button
                       onClick={() => setState(prev => ({ ...prev, skip_batch: false }))}
-                      className="text-orange hover:underline text-sm"
+                      disabled={submitting}
+                      className="text-orange hover:underline text-sm min-h-[44px] px-4"
                     >
                       Go back and create a batch
                     </button>
@@ -659,14 +669,14 @@ export default function OnboardingSteps() {
             {/* Step 5: Review */}
             {step === 5 && (
               <div className="space-y-6">
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-orange/10 to-ember/10 border border-orange/30">
+                <div className="p-6 rounded-2xl bg-orange/5 border border-orange/20">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-full bg-orange/20 flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-orange" />
+                      <Check className="w-5 h-5 text-orange" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Almost there!</h3>
-                      <p className="text-sm text-bone">Review your settings before entering the Compass</p>
+                      <h3 className="font-semibold">Review your setup</h3>
+                      <p className="text-sm text-bone">Confirm before entering the Compass</p>
                     </div>
                   </div>
 
@@ -698,7 +708,7 @@ export default function OnboardingSteps() {
 
                 <div className="p-4 rounded-xl bg-status-clear/10 border border-status-clear/30 text-sm">
                   <p className="text-bone">
-                    <strong className="text-ivory">Tip:</strong> You can change any of these settings later from the Settings page.
+                    <strong className="text-ivory">Note:</strong> You can change any of these settings later from the Settings page.
                   </p>
                 </div>
               </div>
@@ -715,7 +725,7 @@ export default function OnboardingSteps() {
             <button
               onClick={() => goToStep(step - 1)}
               disabled={step === 1 || submitting}
-              className="flex items-center gap-1 text-sm text-bone hover:text-ivory disabled:opacity-30 disabled:cursor-not-allowed transition-colors px-4 py-2"
+              className="flex items-center gap-1 text-sm text-bone hover:text-ivory disabled:opacity-30 disabled:cursor-not-allowed transition-colors px-4 py-2 min-h-[44px]"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Back</span>
@@ -732,7 +742,7 @@ export default function OnboardingSteps() {
                     key={s.id}
                     onClick={() => goToStep(s.id)}
                     disabled={submitting}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-[800ms] ease-out ${
                       isActive
                         ? 'bg-orange text-base'
                         : isComplete
@@ -755,7 +765,7 @@ export default function OnboardingSteps() {
               <button
                 onClick={() => goToStep(step + 1)}
                 disabled={submitting}
-                className="flex items-center gap-1 bg-orange hover:bg-orange/90 text-base px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all disabled:opacity-50"
+                className="flex items-center gap-1 bg-orange hover:bg-orange/90 text-base px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all disabled:opacity-50 min-h-[44px]"
               >
                 <span className="hidden sm:inline">Continue</span>
                 <ChevronRight className="w-4 h-4" />
@@ -764,11 +774,11 @@ export default function OnboardingSteps() {
               <button
                 onClick={handleComplete}
                 disabled={submitting}
-                className="flex items-center gap-2 bg-orange hover:bg-orange/90 text-base px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all disabled:opacity-50"
+                className="flex items-center gap-2 bg-orange hover:bg-orange/90 text-base px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all disabled:opacity-50 min-h-[44px]"
               >
                 {submitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-base/30 border-t-base rounded-full animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="hidden sm:inline">Setting up...</span>
                   </>
                 ) : (

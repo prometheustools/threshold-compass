@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState, useMemo, type FormEvent } from 'react'
 import type { SubstanceType, BatchForm as BatchFormType, EstimatedPotency, DoseUnit, PsilocybinForm, LSDForm } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -14,6 +14,13 @@ interface BatchFormData {
   dose_unit: DoseUnit
   supplements: string
   source_notes: string
+}
+
+interface ValidationErrors {
+  name?: string
+  substance_type?: string
+  form?: string
+  potency?: string
 }
 
 interface BatchFormProps {
@@ -79,6 +86,8 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
   const [doseUnit, setDoseUnit] = useState<DoseUnit>(initialData?.dose_unit ?? 'mg')
   const [supplements, setSupplements] = useState(initialData?.supplements ?? '')
   const [sourceNotes, setSourceNotes] = useState(initialData?.source_notes ?? '')
+  const [errors, setErrors] = useState<ValidationErrors>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const getFormOptions = () => {
     switch (substanceType) {
@@ -91,15 +100,63 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
     }
   }
 
+  const validate = (): ValidationErrors => {
+    const newErrors: ValidationErrors = {}
+    
+    if (!name.trim()) {
+      newErrors.name = 'Batch name is required'
+    } else if (name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters'
+    }
+    
+    if (!substanceType) {
+      newErrors.substance_type = 'Select a substance'
+    }
+    
+    if (!form) {
+      newErrors.form = 'Select a form'
+    }
+    
+    if (!potency) {
+      newErrors.potency = 'Select estimated potency'
+    }
+    
+    return newErrors
+  }
+
+  const isValid = useMemo(() => {
+    const validationErrors = validate()
+    return Object.keys(validationErrors).length === 0
+  }, [name, substanceType, form, potency])
+
   const handleSubstanceChange = (value: string) => {
     setSubstanceType(value)
     setForm('')
     setDoseUnit(value === 'lsd' ? 'ug' : 'mg')
+    setTouched(prev => ({ ...prev, substance_type: true }))
+  }
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }))
+    setErrors(validate())
   }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !substanceType || !form || !potency) return
+    
+    const validationErrors = validate()
+    setErrors(validationErrors)
+    setTouched({
+      name: true,
+      substance_type: true,
+      form: true,
+      potency: true,
+    })
+    
+    if (Object.keys(validationErrors).length > 0) {
+      return
+    }
+    
     onSubmit({
       name: name.trim(),
       substance_type: substanceType as SubstanceType,
@@ -118,7 +175,10 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onBlur={() => handleBlur('name')}
         placeholder="e.g., Golden Teachers - Harvest 1"
+        error={touched.name ? errors.name : undefined}
+        disabled={isSubmitting}
         required
       />
 
@@ -127,24 +187,44 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
         value={substanceType}
         onChange={(e) => handleSubstanceChange(e.target.value)}
         options={substanceTypeOptions}
+        disabled={isSubmitting}
+        error={touched.substance_type ? errors.substance_type : undefined}
       />
+      {touched.substance_type && errors.substance_type && (
+        <p className="text-sm text-status-elevated -mt-2">{errors.substance_type}</p>
+      )}
 
       <Select
         label="Form"
         value={form}
-        onChange={(e) => setForm(e.target.value)}
+        onChange={(e) => {
+          setForm(e.target.value)
+          setTouched(prev => ({ ...prev, form: true }))
+        }}
+        onBlur={() => handleBlur('form')}
         options={[
           { value: '', label: substanceType ? 'Select form' : 'Select substance first' },
           ...getFormOptions().map(opt => ({ value: opt.value, label: opt.label }))
         ]}
+        disabled={isSubmitting || !substanceType}
+        error={touched.form ? errors.form : undefined}
       />
+      {touched.form && errors.form && (
+        <p className="text-sm text-status-elevated -mt-2">{errors.form}</p>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <Select
           label="Potency"
           value={potency}
-          onChange={(e) => setPotency(e.target.value)}
+          onChange={(e) => {
+            setPotency(e.target.value)
+            setTouched(prev => ({ ...prev, potency: true }))
+          }}
+          onBlur={() => handleBlur('potency')}
           options={potencyOptions}
+          disabled={isSubmitting}
+          error={touched.potency ? errors.potency : undefined}
         />
 
         <Select
@@ -152,8 +232,12 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
           value={doseUnit}
           onChange={(e) => setDoseUnit(e.target.value as DoseUnit)}
           options={unitOptions}
+          disabled={isSubmitting}
         />
       </div>
+      {touched.potency && errors.potency && (
+        <p className="text-sm text-status-elevated -mt-2">{errors.potency}</p>
+      )}
 
       <Input
         label="Supplements (Optional)"
@@ -161,6 +245,7 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
         value={supplements}
         onChange={(e) => setSupplements(e.target.value)}
         placeholder="e.g., Lions Mane, B-12, Omega-3"
+        disabled={isSubmitting}
       />
 
       <label className="block">
@@ -171,21 +256,39 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
           value={sourceNotes}
           onChange={(e) => setSourceNotes(e.target.value)}
           rows={3}
-          className="w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory placeholder:text-ash focus:border-orange focus:outline-none transition-quick"
+          disabled={isSubmitting}
+          className="w-full rounded-button border border-ember/30 bg-elevated px-4 py-3 text-ivory placeholder:text-ash focus:border-orange focus:outline-none transition-quick disabled:opacity-50 resize-none"
           placeholder="Any details about the batch source or preparation."
         />
       </label>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 pt-2">
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+          <Button 
+            type="button" 
+            variant="secondary" 
+            onClick={onCancel} 
+            disabled={isSubmitting}
+            className="min-h-[44px]"
+          >
             Cancel
           </Button>
         )}
-        <Button type="submit" loading={isSubmitting}>
+        <Button 
+          type="submit" 
+          loading={isSubmitting}
+          disabled={!isValid && Object.keys(touched).length > 0}
+          className="min-h-[44px]"
+        >
           {initialData?.name ? 'Update Batch' : 'Create Batch'}
         </Button>
       </div>
+      
+      {!isValid && Object.keys(touched).length > 0 && (
+        <p className="text-xs text-ash text-right">
+          Complete all required fields to continue
+        </p>
+      )}
     </form>
   )
 }

@@ -31,10 +31,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { name, substance_type, form, estimated_potency, source_notes } = await request.json()
+  const { name, substance_type, form, estimated_potency, source_notes, dose_unit, supplements } = await request.json()
 
   if (!name || !substance_type || !form || !estimated_potency) {
     return NextResponse.json({ error: 'Missing required batch fields' }, { status: 400 })
+  }
+
+  const { error: deactivateError } = await supabase
+    .from('batches')
+    .update({ is_active: false })
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+
+  if (deactivateError) {
+    return NextResponse.json({ error: deactivateError.message }, { status: 500 })
   }
 
   const { data, error } = await supabase
@@ -45,8 +55,10 @@ export async function POST(request: NextRequest) {
       substance_type,
       form,
       estimated_potency,
+      dose_unit: dose_unit === 'ug' ? 'ug' : 'mg',
+      supplements: supplements ?? null,
       source_notes: source_notes ?? null,
-      is_active: false,
+      is_active: true,
     })
     .select()
     .single()

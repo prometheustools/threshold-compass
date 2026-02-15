@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       amount,
-      unit: unit ?? 'g',
+      unit: unit ?? 'mg',
       batch_id,
       notes: notes ?? null,
       preparation: preparation ?? null,

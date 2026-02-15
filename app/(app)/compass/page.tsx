@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Batch, CarryoverResult, ThresholdRange, User } from '@/types'
+import Link from 'next/link'
+import type { Batch, CarryoverResult, ThresholdRange, User, DoseLog } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import { calculateCarryover } from '@/lib/algorithms/carryover'
 import { getSchemaSetupMessage, isSchemaCacheTableMissingError } from '@/lib/supabase/errors'
 import { useAppStore } from '@/store'
 import CompassView from '@/components/compass/CompassView'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
 
 const DEFAULT_CARRYOVER: CarryoverResult = {
   percentage: 0,
@@ -98,6 +101,12 @@ export default function CompassPage() {
   const [discoveryDoseNumber, setDiscoveryDoseNumber] = useState<number | null>(null)
   const [previewMode, setPreviewMode] = useState(false)
 
+  // Quick Log states
+  const [lastDose, setLastDose] = useState<DoseLog | null>(null)
+  const [quickLogLoading, setQuickLogLoading] = useState(false)
+  const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null)
+  const [lastLoggedDoseId, setLastLoggedDoseId] = useState<string | null>(null)
+
   const setUser = useAppStore((state) => state.setUser)
   const setActiveBatch = useAppStore((state) => state.setActiveBatch)
   const setCarryover = useAppStore((state) => state.setCarryover)
@@ -122,6 +131,52 @@ export default function CompassPage() {
       setPreviewMode(false)
     }
   }, [])
+
+  // Fetch last dose when active batch changes
+  useEffect(() => {
+    if (previewMode || !activeBatch) {
+      setLastDose(null)
+      return
+    }
+
+    const fetchLastDose = async () => {
+      try {
+        const supabase = createClient()
+        const anonUserId = await resolveCurrentUserId(supabase)
+        
+        if (!anonUserId) return
+
+        const { data, error } = await supabase
+          .from('dose_logs')
+          .select('*')
+          .eq('user_id', anonUserId)
+          .eq('batch_id', activeBatch.id)
+          .order('dosed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (error) throw error
+        setLastDose(data as DoseLog | null)
+      } catch {
+        setLastDose(null)
+      }
+    }
+
+    fetchLastDose()
+  }, [activeBatch, previewMode])
+
+  // Auto-dismiss confirmation after 3 seconds
+  useEffect(() => {
+    if (!confirmationMessage) return
+
+    const timer = setTimeout(() => {
+      setConfirmationMessage(null)
+      // Refresh the page data after confirmation dismisses
+      window.location.reload()
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [confirmationMessage])
 
   useEffect(() => {
     let active = true
@@ -301,27 +356,132 @@ export default function CompassPage() {
     }
   }, [router, setActiveBatch, setCarryover, setThresholdRange, setUser])
 
+  const handleQuickLog = async () => {
+    if (!lastDose || !activeBatch || previewMode) return
+
+    setQuickLogLoading(true)
+    try {
+      const response = await fetch('/api/doses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: lastDose.amount,
+          unit: lastDose.unit,
+          batch_id: activeBatch.id,
+          preparation: null,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to log dose')
+      }
+
+      const data = await response.json()
+      setLastLoggedDoseId(data.id)
+      setConfirmationMessage(`Dose logged — ${lastDose.amount}${lastDose.unit}`)
+    } catch {
+      setConfirmationMessage('Failed to log dose')
+    } finally {
+      setQuickLogLoading(false)
+    }
+  }
+
+  const handleUndo = async () => {
+    if (!lastLoggedDoseId) return
+
+    try {
+      const response = await fetch(`/api/doses?id=${lastLoggedDoseId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setConfirmationMessage(null)
+        setLastLoggedDoseId(null)
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
+  const handleDismissConfirmation = () => {
+    setConfirmationMessage(null)
+    window.location.reload()
+  }
+
   return (
-    <CompassView
-      loading={loading}
-      error={error}
-      previewMode={previewMode}
-      user={user}
-      activeBatch={activeBatch}
-      carryover={carryover}
-      thresholdRange={thresholdRange}
-      discoveryDoseNumber={discoveryDoseNumber}
-      onLogDose={() => router.push('/log')}
-      onSettle={() => router.push('/settle')}
-      onResumeSetup={() => {
-        try {
-          window.localStorage.removeItem(PREVIEW_STORAGE_KEY)
-        } catch {
-          // no-op
-        }
-        setPreviewMode(false)
-        router.push('/onboarding')
-      }}
-    />
+    <div className="min-h-screen bg-base px-4 py-8 text-ivory">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-xl flex-col gap-4">
+        <CompassView
+          loading={loading}
+          error={error}
+          previewMode={previewMode}
+          user={user}
+          activeBatch={activeBatch}
+          carryover={carryover}
+          thresholdRange={thresholdRange}
+          discoveryDoseNumber={discoveryDoseNumber}
+          onLogDose={() => router.push('/log')}
+          onSettle={() => router.push('/settle')}
+          onResumeSetup={() => {
+            try {
+              window.localStorage.removeItem(PREVIEW_STORAGE_KEY)
+            } catch {
+              // no-op
+            }
+            setPreviewMode(false)
+            router.push('/onboarding')
+          }}
+        />
+
+        {/* Quick Log Section */}
+        {!loading && !error && !previewMode && (
+          <Card padding="md" className="mt-2">
+            <p className="font-mono text-xs tracking-widest uppercase text-bone mb-3">Quick Log</p>
+            
+            {confirmationMessage ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ivory">{confirmationMessage}</span>
+                <div className="flex items-center gap-2">
+                  {lastLoggedDoseId && (
+                    <button
+                      type="button"
+                      onClick={handleUndo}
+                      className="text-xs text-orange hover:underline"
+                    >
+                      Undo
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleDismissConfirmation}
+                    className="text-xs text-ash hover:text-bone"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            ) : lastDose ? (
+              <Button
+                type="button"
+                variant="primary"
+                className="w-full"
+                onClick={handleQuickLog}
+                loading={quickLogLoading}
+                disabled={quickLogLoading}
+              >
+                Log Same ({lastDose.amount}{lastDose.unit})
+              </Button>
+            ) : (
+              <Link
+                href="/log"
+                className="flex min-h-[44px] items-center justify-center rounded-button border border-ember/30 bg-elevated px-4 py-3 text-sm font-medium text-bone transition-settle hover:border-ember/60 hover:text-ivory"
+              >
+                Log First Dose
+              </Link>
+            )}
+          </Card>
+        )}
+      </div>
+    </div>
   )
 }

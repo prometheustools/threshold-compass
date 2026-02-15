@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, type NextRequest } from 'next/server'
+import {
+  getSchemaSetupMessage,
+  isSchemaCacheColumnMissingError,
+  isSchemaCacheTableMissingError,
+} from '@/lib/supabase/errors'
 
 type PatternRow = {
   id: string
@@ -33,6 +38,10 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) {
+    if (isSchemaCacheTableMissingError(error, 'patterns')) {
+      return NextResponse.json([])
+    }
+
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -55,6 +64,10 @@ export async function POST(request: NextRequest) {
   if (regenerate) {
     const { error: clearError } = await supabase.from('patterns').delete().eq('user_id', user.id)
     if (clearError) {
+      if (isSchemaCacheTableMissingError(clearError, 'patterns')) {
+        return NextResponse.json({ patterns: [], generated: 0, degraded: true, message: getSchemaSetupMessage('patterns') })
+      }
+
       return NextResponse.json({ error: clearError.message }, { status: 500 })
     }
   }
@@ -67,6 +80,13 @@ export async function POST(request: NextRequest) {
     .limit(120)
 
   if (doseError) {
+    if (
+      isSchemaCacheTableMissingError(doseError, 'dose_logs') ||
+      isSchemaCacheColumnMissingError(doseError)
+    ) {
+      return NextResponse.json({ patterns: [], generated: 0, degraded: true, message: getSchemaSetupMessage('dose_logs') })
+    }
+
     return NextResponse.json({ error: doseError.message }, { status: 500 })
   }
 
@@ -153,6 +173,15 @@ export async function POST(request: NextRequest) {
     .select('*')
 
   if (insertError) {
+    if (isSchemaCacheTableMissingError(insertError, 'patterns') || isSchemaCacheColumnMissingError(insertError)) {
+      return NextResponse.json({
+        patterns: [],
+        generated: 0,
+        degraded: true,
+        message: getSchemaSetupMessage('patterns'),
+      })
+    }
+
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 

@@ -127,6 +127,7 @@ export default function SettingsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
+  const [redoLoading, setRedoLoading] = useState(false)
 
   const [northStar, setNorthStar] = useState<NorthStar>('clarity')
   const [guidanceLevel, setGuidanceLevel] = useState<GuidanceLevel>('guided')
@@ -333,6 +334,30 @@ export default function SettingsPage() {
       alert('Failed to delete account. Please try again.')
       setDeleteLoading(false)
       setShowDeleteConfirm(false)
+    }
+  }
+
+  const handleRedoOnboarding = async () => {
+    if (!userId) return
+
+    setRedoLoading(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('users')
+        .update({ onboarding_complete: false, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+
+      if (error) throw error
+
+      localStorage.removeItem('compass_preview_mode')
+      localStorage.removeItem('compass_first_visit_shown')
+      router.push('/onboarding?redo=1')
+    } catch (err) {
+      console.error('Redo onboarding error:', err)
+      alert('Unable to restart onboarding right now.')
+    } finally {
+      setRedoLoading(false)
     }
   }
 
@@ -576,6 +601,22 @@ export default function SettingsPage() {
               {importLoading ? 'Importing...' : 'Import JSON Backup'}
             </Button>
           </label>
+        </Card>
+
+        <Card padding="lg" className="border-status-mild/30">
+          <p className="font-mono text-xs tracking-widest uppercase text-status-mild">Developer Tools</p>
+          <p className="mt-2 text-sm text-bone">
+            Re-run onboarding with your current account for migration and UX testing.
+          </p>
+          <Button
+            variant="secondary"
+            size="lg"
+            className="mt-3 w-full"
+            onClick={handleRedoOnboarding}
+            loading={redoLoading}
+          >
+            {redoLoading ? 'Restarting...' : 'Redo Onboarding (Keep Data)'}
+          </Button>
         </Card>
 
         <Card padding="lg" className="border-ember/20">

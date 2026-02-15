@@ -1,117 +1,124 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react'
-import type { DoseLog, CheckIn } from '@/types'
+import type { DoseLog, Batch } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import Card from '@/components/ui/Card'
 import LoadingState from '@/components/ui/LoadingState'
-import { EmptyStateNoDoses } from '@/components/ui/EmptyState'
 
-interface DoseWithBatchAndCheckIn extends DoseLog {
+interface DoseWithBatch extends DoseLog {
   batch_name: string
-  check_in: CheckIn | null
 }
 
-type HistoryFilter = 'all' | 'complete' | 'incomplete' | 'sweetspot'
+interface DoseGroup {
+  date: string
+  doses: DoseWithBatch[]
+}
 
-function formatDate(dateString: string): string {
-  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(dateString))
+function formatDateHeader(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).toUpperCase()
 }
 
 function formatTime(dateString: string): string {
-  return new Intl.DateTimeFormat('en-US', { timeStyle: 'short' }).format(new Date(dateString))
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
-const zoneColors: Record<string, string> = {
-  sub: 'text-ash',
-  low: 'text-status-clear',
-  sweet_spot: 'text-orange',
-  high: 'text-status-mild',
-  over: 'text-status-elevated',
-}
-
-const zoneLabels: Record<string, string> = {
-  sub: 'Sub',
-  low: 'Low',
-  sweet_spot: 'Sweet Spot',
-  high: 'High',
-  over: 'Over',
-}
-
-const dayClassColors: Record<string, string> = {
-  green: 'text-status-clear',
-  yellow: 'text-status-mild',
-  red: 'text-status-elevated',
-  unclassified: 'text-ash',
-}
-
-function isSweetSpot(log: DoseWithBatchAndCheckIn): boolean {
-  if (log.threshold_feel === 'sweetspot') return true
-  if (log.day_classification === 'green') return true
-  return log.check_in?.threshold_zone === 'sweet_spot'
+function getDayClassificationColor(classification: string | null): string {
+  switch (classification) {
+    case 'green':
+      return '#4A9B6B'
+    case 'yellow':
+      return '#C9A227'
+    case 'red':
+      return '#B54A4A'
+    default:
+      return '#8A8A8A'
+  }
 }
 
 export default function HistoryPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [logs, setLogs] = useState<DoseWithBatchAndCheckIn[]>([])
+  const [doses, setDoses] = useState<DoseWithBatch[]>([])
+  const [batches, setBatches] = useState<Batch[]>([])
+  const [activeBatch, setActiveBatch] = useState<Batch | null>(null)
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [activeFilter, setActiveFilter] = useState<HistoryFilter>('all')
 
   useEffect(() => {
     let active = true
 
-    const load = async () => {
+    const loadData = async () => {
       setLoading(true)
       try {
         const supabase = createClient()
         const anonUserId = await resolveCurrentUserId(supabase)
         
-        if (!anonUserId) return
-
-        const { data: doseRows, error: doseError } = await supabase
-          .from('dose_logs')
-          .select('*, batches(name)')
-          .eq('user_id', anonUserId)
-          .order('dosed_at', { ascending: false })
-
-        if (doseError) throw doseError
-
-        const doseIds = (doseRows ?? []).map((d: Record<string, unknown>) => d.id as string)
-
-        const checkInMap: Record<string, CheckIn> = {}
-
-        if (doseIds.length > 0) {
-          const { data: checkInRows } = await supabase
-            .from('check_ins')
-            .select('*')
-            .in('dose_log_id', doseIds)
-
-          if (checkInRows) {
-            for (const ci of checkInRows) {
-              const typed = ci as CheckIn
-              if (typed.dose_log_id) {
-                checkInMap[typed.dose_log_id] = typed
-              }
-            }
-          }
+        if (!anonUserId) {
+          router.push('/autologin')
+          return
         }
+
+        // Fetch batches for filter
+        const { data: batchRows, error: batchError } = await supabase
+          .from('batches')
+          .select('*')
+          .eq('user_id', anonUserId)
+          .order('created_at', { ascending: false })
+
+        if (batchError) throw batchError
+
+        const typedBatches = (batchRows ?? []) as Batch[]
+        const activeBatchItem = typedBatches.find(b => b.is_active)
 
         if (!active) return
 
-        const mapped: DoseWithBatchAndCheckIn[] = (doseRows ?? []).map(
-          (row: Record<string, unknown>) => {
-            const batchRel = row.batches as { name: string } | null
-            return {
-              ...(row as unknown as DoseLog),
-              batch_name: batchRel?.name ?? 'Unknown batch',
-              check_in: checkInMap[row.id as string] ?? null,
-            }
-          }
-        )
+        setBatches(typedBatches)
+        setActiveBatch(activeBatchItem ?? null)
 
-        setLogs(mapped)
+        // Build batch name map
+        const batchNameMap: Record<string, string> = {}
+        for (const batch of typedBatches) {
+          batchNameMap[batch.id] = batch.name
+        }
+
+        // Fetch doses
+        let query = supabase
+          .from('dose_logs')
+          .select('*')
+          .eq('user_id', anonUserId)
+          .order('dosed_at', { ascending: false })
+
+        if (selectedBatchId !== 'all') {
+          query = query.eq('batch_id', selectedBatchId)
+        }
+
+        const { data: doseRows, error: doseError } = await query
+
+        if (doseError) throw doseError
+
+        if (!active) return
+
+        const mappedDoses: DoseWithBatch[] = (doseRows ?? []).map((row) => ({
+          ...(row as DoseLog),
+          batch_name: batchNameMap[row.batch_id] ?? 'Unknown batch',
+        }))
+
+        setDoses(mappedDoses)
       } catch {
         // fail silently
       } finally {
@@ -119,36 +126,31 @@ export default function HistoryPage() {
       }
     }
 
-    void load()
+    void loadData()
     return () => {
       active = false
     }
-  }, [])
+  }, [selectedBatchId, router])
 
-  const toggle = (id: string) => setExpandedId(expandedId === id ? null : id)
-
-  const filterCounts = useMemo(() => {
-    return {
-      all: logs.length,
-      complete: logs.filter((log) => log.post_dose_completed).length,
-      incomplete: logs.filter((log) => !log.post_dose_completed).length,
-      sweetspot: logs.filter((log) => isSweetSpot(log)).length,
+  const groupedDoses = useMemo((): DoseGroup[] => {
+    const groups: Record<string, DoseWithBatch[]> = {}
+    
+    for (const dose of doses) {
+      const dateKey = dose.dosed_at.split('T')[0]
+      if (!groups[dateKey]) {
+        groups[dateKey] = []
+      }
+      groups[dateKey].push(dose)
     }
-  }, [logs])
 
-  const filteredLogs = useMemo(() => {
-    if (activeFilter === 'all') return logs
-    if (activeFilter === 'complete') return logs.filter((log) => log.post_dose_completed)
-    if (activeFilter === 'incomplete') return logs.filter((log) => !log.post_dose_completed)
-    return logs.filter((log) => isSweetSpot(log))
-  }, [activeFilter, logs])
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, doses]) => ({ date, doses }))
+  }, [doses])
 
-  useEffect(() => {
-    if (!expandedId) return
-    if (!filteredLogs.some((log) => log.id === expandedId)) {
-      setExpandedId(null)
-    }
-  }, [expandedId, filteredLogs])
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id)
+  }
 
   return (
     <div className="min-h-screen bg-base text-ivory">
@@ -159,155 +161,197 @@ export default function HistoryPage() {
             <div className="w-10 h-10 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center">
               <Clock className="w-5 h-5 text-orange" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-mono text-xs tracking-wider uppercase text-bone">History</p>
               <h1 className="text-xl font-semibold">Dose Log</h1>
             </div>
+          </div>
+
+          {/* Active batch info */}
+          <div className="mt-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-ash">Active Batch</p>
+              <p className="text-sm text-ivory font-medium">
+                {activeBatch?.name ?? 'No active batch'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-ash">Doses Logged</p>
+              <p className="text-sm text-ivory font-mono">{doses.length}</p>
+            </div>
+          </div>
+
+          {/* Batch filter */}
+          <div className="mt-3">
+            <select
+              value={selectedBatchId}
+              onChange={(e) => setSelectedBatchId(e.target.value)}
+              className="w-full rounded-instrument border border-ember/30 bg-elevated px-3 py-2 text-sm text-ivory focus:border-orange focus:outline-none"
+              aria-label="Filter by batch"
+            >
+              <option value="all">All Batches</option>
+              {batches.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.name} {batch.is_active ? '(Active)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </header>
 
       {/* Content */}
       <main className="px-4 sm:px-6 py-6">
-        <div className="max-w-xl mx-auto space-y-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {(
-              [
-                { key: 'all', label: 'All' },
-                { key: 'complete', label: 'Complete' },
-                { key: 'incomplete', label: 'Incomplete' },
-                { key: 'sweetspot', label: 'Sweet Spot' },
-              ] as const
-            ).map((filter) => {
-              const active = activeFilter === filter.key
-              return (
-                <button
-                  key={filter.key}
-                  type="button"
-                  onClick={() => setActiveFilter(filter.key)}
-                  className={`rounded-button border px-3 py-2 text-left transition-settle ${
-                    active
-                      ? 'border-orange bg-orange/15 text-ivory'
-                      : 'border-ember/30 bg-elevated text-bone hover:border-ember/60'
-                  }`}
-                  aria-pressed={active}
-                >
-                  <p className="font-mono text-[10px] uppercase tracking-widest">{filter.label}</p>
-                  <p className="mt-1 text-lg leading-none">{filterCounts[filter.key]}</p>
-                </button>
-              )
-            })}
-          </div>
-
+        <div className="max-w-xl mx-auto space-y-6">
           {loading ? (
             <Card padding="lg">
-              <LoadingState message="loading" size="md" />
+              <LoadingState message="loading history" size="md" />
             </Card>
-          ) : filteredLogs.length === 0 ? (
-            <EmptyStateNoDoses />
+          ) : doses.length === 0 ? (
+            <Card padding="lg" className="text-center">
+              <p className="text-bone mb-2">No doses logged yet.</p>
+              <p className="text-sm text-ash mb-4">Start your first log.</p>
+              <Link
+                href="/log"
+                className="inline-flex items-center justify-center rounded-button bg-orange px-4 py-2 text-sm font-medium text-base transition-settle hover:brightness-110"
+              >
+                Log First Dose
+              </Link>
+            </Card>
           ) : (
-            filteredLogs.map((log) => (
-              <Card key={log.id} className="overflow-hidden transition-all duration-300 hover:border-ember/40">
-                <button
-                  type="button"
-                  onClick={() => toggle(log.id)}
-                  className="w-full p-4 text-left"
-                  aria-expanded={expandedId === log.id}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-xs text-bone">{formatDate(log.dosed_at)}</span>
-                        <span className="text-xs text-ash">at {formatTime(log.dosed_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-2xl text-ivory">{log.amount}</span>
-                        <span className="text-sm text-bone">{log.unit}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-ash">
-                        {log.batch_name}
-                      </p>
-                      <p className="mt-1 text-[10px] font-mono uppercase tracking-widest text-bone">
-                        {log.post_dose_completed ? 'Complete' : 'Incomplete'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {log.day_classification && (
-                        <span className={`text-xs font-medium uppercase ${dayClassColors[log.day_classification] ?? 'text-ash'}`}>
-                          {log.day_classification}
-                        </span>
-                      )}
-                      {log.threshold_feel && (
-                        <span className="text-xs text-bone capitalize">{log.threshold_feel}</span>
-                      )}
-                      {!log.threshold_feel && log.check_in?.threshold_zone && (
-                        <span className={`text-xs font-medium ${zoneColors[log.check_in.threshold_zone]}`}>
-                          {zoneLabels[log.check_in.threshold_zone]}
-                        </span>
-                      )}
-                      {expandedId === log.id ? (
-                        <ChevronUp className="w-4 h-4 text-ash" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-ash" />
-                      )}
-                    </div>
-                  </div>
-                </button>
+            groupedDoses.map((group) => (
+              <div key={group.date} className="space-y-2">
+                {/* Date header */}
+                <h2 className="font-mono text-xs uppercase tracking-widest text-bone sticky top-[180px] bg-base/95 backdrop-blur-sm py-2">
+                  {formatDateHeader(group.date)}
+                </h2>
 
-                {expandedId === log.id && (
-                  <div className="border-t border-ember/20 px-4 pb-4 pt-3 space-y-4 bg-elevated/30">
-                    {log.notes && (
-                      <div>
-                        <p className="font-mono text-[10px] tracking-wider uppercase text-bone mb-1">Notes</p>
-                        <p className="text-sm text-ivory">{log.notes}</p>
-                      </div>
-                    )}
-                    
-                    {log.check_in && (
-                      <div className="space-y-3">
-                        <p className="font-mono text-[10px] tracking-wider uppercase text-bone">Check-in</p>
-                        
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          {log.check_in.energy && (
-                            <div className="flex justify-between">
-                              <span className="text-ash">Energy</span>
-                              <span className="text-ivory">{log.check_in.energy}</span>
-                            </div>
-                          )}
-                          {log.check_in.mood && (
-                            <div className="flex justify-between">
-                              <span className="text-ash">Mood</span>
-                              <span className="text-ivory">{log.check_in.mood}</span>
-                            </div>
-                          )}
-                          {log.check_in.focus && (
-                            <div className="flex justify-between">
-                              <span className="text-ash">Focus</span>
-                              <span className="text-ivory">{log.check_in.focus}</span>
-                            </div>
-                          )}
-                          {log.check_in.body_state && (
-                            <div className="flex justify-between">
-                              <span className="text-ash">Body</span>
-                              <span className="text-ivory">{log.check_in.body_state}</span>
-                            </div>
-                          )}
-                        </div>
+                {/* Doses for this date */}
+                <div className="space-y-2">
+                  {group.doses.map((dose) => {
+                    const borderColor = getDayClassificationColor(dose.day_classification)
+                    const isExpanded = expandedId === dose.id
 
-                        {log.check_in.notes && (
-                          <div className="pt-2 border-t border-ember/10">
-                            <p className="text-sm text-ivory">{log.check_in.notes}</p>
+                    return (
+                      <Card
+                        key={dose.id}
+                        className="overflow-hidden transition-all duration-300 hover:border-ember/40 p-0"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(dose.id)}
+                          className="w-full text-left"
+                          aria-expanded={isExpanded}
+                        >
+                          {/* Main row with left border */}
+                          <div
+                            className="flex items-center gap-3 p-3"
+                            style={{ borderLeft: `3px solid ${borderColor}` }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm text-ivory">
+                                  {formatTime(dose.dosed_at)}
+                                </span>
+                                <span className="font-mono text-lg text-ivory">
+                                  {dose.amount}
+                                  <span className="text-sm text-bone ml-0.5">{dose.unit}</span>
+                                </span>
+                              </div>
+                              <p className="text-xs text-bone truncate">{dose.batch_name}</p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {dose.threshold_feel && (
+                                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-instrument bg-elevated text-bone">
+                                  {dose.threshold_feel}
+                                </span>
+                              )}
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-ash" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-ash" />
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {!log.notes && !log.check_in && (
-                      <p className="text-sm text-ash italic">No additional details recorded</p>
-                    )}
-                  </div>
-                )}
-              </Card>
+
+                          {/* Expanded details */}
+                          {isExpanded && (
+                            <div className="border-t border-ember/20 px-4 py-3 space-y-3 bg-elevated/30">
+                              {/* Sleep, Energy, Stress */}
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                {dose.sleep_quality && (
+                                  <div>
+                                    <span className="text-ash">Sleep:</span>
+                                    <span className="ml-1 text-ivory capitalize">{dose.sleep_quality}</span>
+                                  </div>
+                                )}
+                                {dose.energy_level && (
+                                  <div>
+                                    <span className="text-ash">Energy:</span>
+                                    <span className="ml-1 text-ivory capitalize">{dose.energy_level}</span>
+                                  </div>
+                                )}
+                                {dose.stress_level && (
+                                  <div>
+                                    <span className="text-ash">Stress:</span>
+                                    <span className="ml-1 text-ivory capitalize">{dose.stress_level}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* STI Scores */}
+                              {(dose.signal_score !== null || dose.texture_score !== null || dose.interference_score !== null) && (
+                                <div className="flex items-center gap-4 text-xs">
+                                  {dose.signal_score !== null && (
+                                    <div>
+                                      <span className="text-ash">Signal:</span>
+                                      <span className="ml-1 font-mono text-ivory">{dose.signal_score}</span>
+                                    </div>
+                                  )}
+                                  {dose.texture_score !== null && (
+                                    <div>
+                                      <span className="text-ash">Texture:</span>
+                                      <span className="ml-1 font-mono text-ivory">{dose.texture_score}</span>
+                                    </div>
+                                  )}
+                                  {dose.interference_score !== null && (
+                                    <div>
+                                      <span className="text-ash">Interference:</span>
+                                      <span className="ml-1 font-mono text-ivory">{dose.interference_score}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Notes */}
+                              {dose.notes && (
+                                <div className="pt-2 border-t border-ember/10">
+                                  <p className="text-xs text-ash mb-1">Notes</p>
+                                  <p className="text-sm text-ivory">{dose.notes}</p>
+                                </div>
+                              )}
+
+                              {/* Additional metadata */}
+                              <div className="pt-2 border-t border-ember/10 text-[10px] text-ash space-y-1">
+                                {dose.preparation && (
+                                  <p>Preparation: <span className="text-bone capitalize">{dose.preparation.replace('_', ' ')}</span></p>
+                                )}
+                                {dose.context_tags && dose.context_tags.length > 0 && (
+                                  <p>Context: <span className="text-bone">{dose.context_tags.join(', ')}</span></p>
+                                )}
+                                {dose.timing_tag && (
+                                  <p>Timing: <span className="text-bone capitalize">{dose.timing_tag}</span></p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
             ))
           )}
         </div>

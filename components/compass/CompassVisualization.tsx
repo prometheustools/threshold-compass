@@ -38,6 +38,14 @@ const tierLabels: Record<CarryoverTier, string> = {
   elevated: 'ELEVATED',
 }
 
+const northStarShortLabels: Record<NorthStar, string> = {
+  clarity: 'CL',
+  connection: 'CN',
+  creativity: 'CR',
+  calm: 'CA',
+  exploration: 'EX',
+}
+
 export default function CompassVisualization({
   state,
   northStar,
@@ -52,13 +60,15 @@ export default function CompassVisualization({
   const [animationPhase, setAnimationPhase] = useState<'searching' | 'found' | 'settled'>('searching')
 
   useEffect(() => {
+    const resetTimeout = setTimeout(() => setAnimationPhase('searching'), 0)
     const searchTimeout = setTimeout(() => setAnimationPhase('found'), 800)
     const settleTimeout = setTimeout(() => setAnimationPhase('settled'), 1800)
     return () => {
+      clearTimeout(resetTimeout)
       clearTimeout(searchTimeout)
       clearTimeout(settleTimeout)
     }
-  }, [])
+  }, [state, northStar, carryoverTier])
 
   const centerText = useMemo(() => {
     switch (state) {
@@ -66,6 +76,12 @@ export default function CompassVisualization({
         return 'CALIBRATE'
       case 'calibrating':
         return `DOSE ${progress || 1} OF 10`
+      case 'calibrated_rest':
+      case 'calibrated_active':
+        if (calibrationStatus === 'calibrated' && thresholdRange?.floor_dose && thresholdRange?.ceiling_dose) {
+          return `RANGE: ${thresholdRange.floor_dose}-${thresholdRange.ceiling_dose}${unit}`
+        }
+        return tierLabels[carryoverTier]
       case 'calibrated_rest':
         return tierLabels[carryoverTier]
       case 'calibrated_active':
@@ -122,6 +138,8 @@ export default function CompassVisualization({
   const glowIntensity = animationPhase === 'found' ? 1 : animationPhase === 'searching' ? 0.3 : 0.8
 
   const hasThresholdMarkers = state === 'calibrated_rest' || state === 'calibrated_active'
+  const showSweep = animationPhase === 'searching'
+  const ringClassName = animationPhase === 'searching' ? 'animate-[compassPulse_2200ms_ease-in-out_infinite]' : ''
 
   return (
     <div className="relative w-full max-w-sm mx-auto aspect-square">
@@ -160,6 +178,32 @@ export default function CompassVisualization({
           </filter>
         </defs>
 
+        {(Object.keys(northStarDegrees) as NorthStar[]).map((key) => {
+          const marker = polarToCartesian(100, 100, 95, northStarDegrees[key])
+          const selected = key === northStar
+
+          return (
+            <g key={key}>
+              <circle
+                cx={marker.x}
+                cy={marker.y}
+                r={selected ? 2.5 : 1.8}
+                fill={selected ? '#E07A3E' : '#8A8A8A'}
+                opacity={selected ? 1 : 0.7}
+              />
+              <text
+                x={marker.x}
+                y={marker.y - 5}
+                textAnchor="middle"
+                className={`font-mono text-[6px] uppercase tracking-wide ${selected ? 'fill-orange' : 'fill-bone'}`}
+                opacity={selected ? 1 : 0.7}
+              >
+                {northStarShortLabels[key]}
+              </text>
+            </g>
+          )
+        })}
+
         {/* Outer ring */}
         <circle
           cx="100"
@@ -169,6 +213,7 @@ export default function CompassVisualization({
           stroke={state === 'elevated_carryover' ? '#D4682A' : '#2A2A2A'}
           strokeWidth="4"
           opacity={state === 'elevated_carryover' ? 0.5 : 1}
+          className={ringClassName}
         />
 
         {/* Active arc */}
@@ -180,6 +225,13 @@ export default function CompassVisualization({
           strokeLinecap="round"
           className="transition-settle"
         />
+
+        {showSweep && (
+          <g style={{ transformOrigin: '100px 100px', animation: 'compassSweep 1400ms linear infinite' }}>
+            <line x1="100" y1="100" x2="100" y2="24" stroke="#E07A3E" strokeWidth="1.5" opacity="0.65" />
+            <circle cx="100" cy="24" r="2.5" fill="#E07A3E" opacity="0.8" />
+          </g>
+        )}
 
         {/* Threshold markers (when calibrated) */}
         {hasThresholdMarkers && thresholdRange && (
@@ -248,12 +300,37 @@ export default function CompassVisualization({
         {/* Center text */}
         <text
           x="100"
-          y="105"
+          y="98"
           textAnchor="middle"
           className="font-mono text-[10px] uppercase tracking-wider fill-ivory"
         >
           {centerText}
         </text>
+
+        {calibrationStatus === 'calibrated' && thresholdRange && (
+          <g>
+            {thresholdRange.sweet_spot !== null && (
+              <text
+                x="100"
+                y="112"
+                textAnchor="middle"
+                className="font-mono text-[8px] uppercase tracking-wider fill-orange"
+              >
+                SWEET SPOT: {thresholdRange.sweet_spot}{unit}
+              </text>
+            )}
+            {thresholdRange.confidence !== null && (
+              <text
+                x="100"
+                y="120"
+                textAnchor="middle"
+                className="font-mono text-[6px] uppercase tracking-wider fill-bone"
+              >
+                CONFIDENCE: {thresholdRange.confidence}%
+              </text>
+            )}
+          </g>
+        )}
 
         {/* Threshold zone labels (when calibrated) */}
         {hasThresholdMarkers && thresholdRange && (
@@ -312,6 +389,25 @@ export default function CompassVisualization({
           }
           50% {
             transform: rotate(var(--drift-amplitude));
+          }
+        }
+
+        @keyframes compassPulse {
+          0%,
+          100% {
+            opacity: 0.82;
+          }
+          50% {
+            opacity: 1;
+          }
+        }
+
+        @keyframes compassSweep {
+          from {
+            transform: rotate(-180deg);
+          }
+          to {
+            transform: rotate(180deg);
           }
         }
       `}</style>

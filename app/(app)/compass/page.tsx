@@ -7,6 +7,7 @@ import type { Batch, CarryoverResult, ThresholdRange, User, DoseLog } from '@/ty
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import { calculateCarryover } from '@/lib/algorithms/carryover'
+import { detectDrift } from '@/lib/algorithms/drift'
 import { getSchemaSetupMessage, isSchemaCacheTableMissingError } from '@/lib/supabase/errors'
 import { useAppStore } from '@/store'
 import CompassView from '@/components/compass/CompassView'
@@ -106,6 +107,10 @@ export default function CompassPage() {
   const [quickLogLoading, setQuickLogLoading] = useState(false)
   const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null)
   const [lastLoggedDoseId, setLastLoggedDoseId] = useState<string | null>(null)
+
+  // Drift detection and tooltip states
+  const [driftResult, setDriftResult] = useState<{ isDrifting: boolean; direction: 'above' | 'below' | null; message: string; severity: 'info' | 'warning' } | null>(null)
+  const [showTooltip, setShowTooltip] = useState(false)
 
   const setUser = useAppStore((state) => state.setUser)
   const setActiveBatch = useAppStore((state) => state.setActiveBatch)
@@ -320,12 +325,24 @@ export default function CompassPage() {
           }
         }
 
+        // Calculate drift if we have threshold range and enough doses
+        if (nextThresholdRange) {
+          const drift = detectDrift(typedDoseRows, nextThresholdRange)
+          setDriftResult(drift)
+        }
+
         if (!active) {
           return
         }
 
         setUserState(typedUser)
         setActiveBatchState(typedBatch)
+
+        // Check if we should show the first-run tooltip
+        const tooltipKey = 'compass_tooltip_seen'
+        if (!window.localStorage.getItem(tooltipKey) && typedBatch?.calibration_status === 'calibrating') {
+          setShowTooltip(true)
+        }
         setCarryoverState(nextCarryover)
         setThresholdRangeState(nextThresholdRange)
         setDiscoveryDoseNumber(nextDiscoveryDoseNumber)
@@ -432,6 +449,39 @@ export default function CompassPage() {
             router.push('/onboarding')
           }}
         />
+
+        {/* First-run Tooltip */}
+        {showTooltip && (
+          <div className="mx-auto w-full max-w-xl rounded-card border border-ember/30 bg-elevated px-4 py-3">
+            <p className="text-sm text-ivory mb-2">
+              Your compass tracks calibration progress. Log 10 doses to discover your threshold range — the dose window where you feel effects without excess.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                window.localStorage.setItem('compass_tooltip_seen', '1')
+                setShowTooltip(false)
+              }}
+              className="text-xs text-orange font-mono uppercase tracking-wider hover:underline"
+            >
+              Got it
+            </button>
+          </div>
+        )}
+
+        {/* Drift Detection Banner */}
+        {driftResult?.isDrifting && (
+          <div className={`mx-auto w-full max-w-xl rounded-card border px-4 py-3 ${
+            driftResult.severity === 'warning'
+              ? 'border-status-moderate/30 bg-status-moderate/10'
+              : 'border-ember/30 bg-elevated'
+          }`}>
+            <p className="font-mono text-xs uppercase tracking-widest text-bone mb-1">
+              {driftResult.direction === 'above' ? 'Upward Drift' : 'Downward Drift'}
+            </p>
+            <p className="text-sm text-ivory">{driftResult.message}</p>
+          </div>
+        )}
 
         {/* Quick Log Section */}
         {!loading && !error && !previewMode && (

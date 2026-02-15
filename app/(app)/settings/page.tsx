@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { GuidanceLevel, NorthStar, User } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { clearAnonymousSession, resolveCurrentUserId } from '@/lib/auth/anonymous'
@@ -563,6 +564,24 @@ export default function SettingsPage() {
                 </div>
               ))
             )}
+          </div>
+        </Card>
+
+        <Card padding="lg">
+          <p className="font-mono text-xs tracking-widest uppercase text-bone">Tools</p>
+          <div className="mt-3 space-y-2">
+            <Link
+              href="/compare"
+              className="block rounded-button border border-ember/20 bg-elevated px-4 py-3 text-sm text-ivory transition-settle hover:border-ember/50"
+            >
+              Compare Batches
+            </Link>
+            <Link
+              href="/report"
+              className="block rounded-button border border-ember/20 bg-elevated px-4 py-3 text-sm text-ivory transition-settle hover:border-ember/50"
+            >
+              Threshold Report
+            </Link>
           </div>
         </Card>
 

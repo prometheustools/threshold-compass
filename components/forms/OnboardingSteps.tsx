@@ -2,65 +2,36 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  Check, 
-  ChevronLeft, 
-  ChevronRight, 
-  Compass, 
-  FlaskConical, 
-  Gauge, 
-  Target,
+import {
   ArrowRight,
-  SkipForward,
-  Loader2
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  FlaskConical,
+  Loader2,
 } from 'lucide-react'
 import type { BatchForm, EstimatedPotency, GuidanceLevel, NorthStar, SubstanceType } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import { getSchemaSetupMessage, isSchemaCacheTableMissingError } from '@/lib/supabase/errors'
-import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import Select from '@/components/ui/Select'
-import Slider from '@/components/ui/Slider'
 
-const TOTAL_STEPS = 5
+const TOTAL_STEPS = 2
 const PREVIEW_STORAGE_KEY = 'compass_preview_mode'
 
 const stepConfig = [
-  { 
-    id: 1, 
-    label: 'Substance', 
+  {
+    id: 1,
     icon: FlaskConical,
-    title: 'Choose your substance',
-    description: 'This determines your measurement units and calibration approach.'
+    title: 'Substance + First Batch',
+    description: 'Set your tracking unit and name the batch you are about to use.',
   },
-  { 
-    id: 2, 
-    label: 'Sensitivity', 
-    icon: Gauge,
-    title: 'How sensitive are you?',
-    description: 'Help us set safe starting doses based on your baseline sensitivity.'
-  },
-  { 
-    id: 3, 
-    label: 'Intention', 
-    icon: Target,
-    title: 'Set your intention',
-    description: 'What brings you to microdosing? This shapes your guidance.'
-  },
-  { 
-    id: 4, 
-    label: 'Batch', 
-    icon: FlaskConical,
-    title: 'Create your first batch',
-    description: 'Track your substance source for accurate threshold calibration.'
-  },
-  { 
-    id: 5, 
-    label: 'Review', 
+  {
+    id: 2,
     icon: Check,
-    title: 'Ready to begin',
-    description: 'Review your settings before entering the Compass.'
+    title: 'Ready to Start',
+    description: 'Everything else is optional and can be changed later in Settings.',
   },
 ] as const
 
@@ -68,109 +39,57 @@ const substanceOptions: Array<{ value: SubstanceType; label: string; description
   {
     value: 'psilocybin',
     label: 'Psilocybin mushrooms',
-    description: 'Measure in grams. Track by batch for potency variations.',
+    description: 'Tracked in milligrams (mg).',
   },
-  { 
-    value: 'lsd', 
-    label: 'LSD', 
-    description: 'Measure in micrograms. More consistent potency.',
+  {
+    value: 'lsd',
+    label: 'LSD',
+    description: 'Tracked in micrograms (µg).',
   },
-  { 
-    value: 'other', 
-    label: 'Other substance', 
-    description: 'Custom tracking with the same scientific approach.',
+  {
+    value: 'other',
+    label: 'Other substance',
+    description: 'Uses the same Compass workflow with manual labels.',
   },
-]
-
-const sensitivityOptions: Array<{ value: number; title: string; description: string }> = [
-  { value: 1, title: 'Very Low', description: 'I need higher doses than most people' },
-  { value: 2, title: 'Low', description: 'Slightly below average sensitivity' },
-  { value: 3, title: 'Average', description: 'Standard doses work as expected' },
-  { value: 4, title: 'High', description: 'More sensitive than average' },
-  { value: 5, title: 'Very High', description: 'Small amounts affect me strongly' },
-]
-
-const northStarOptions: Array<{ value: NorthStar; label: string; description: string }> = [
-  { value: 'clarity', label: 'Clarity', description: 'Sharpen attention and mental focus' },
-  { value: 'connection', label: 'Connection', description: 'Deepen empathy and relationships' },
-  { value: 'creativity', label: 'Creativity', description: 'Open associative thinking' },
-  { value: 'calm', label: 'Calm', description: 'Settle nervous system' },
-  { value: 'exploration', label: 'Exploration', description: 'Learn through structured discovery' },
-]
-
-const guidanceOptions: Array<{ value: GuidanceLevel; label: string; description: string; level: 'full' | 'medium' | 'minimal' }> = [
-  { value: 'guided', label: 'Full Guidance', description: 'Detailed prompts and explanations at every step', level: 'full' },
-  { value: 'experienced', label: 'Streamlined', description: 'Fewer prompts, assumes familiarity', level: 'medium' },
-  { value: 'minimal', label: 'Data Only', description: 'Just the numbers, no coaching copy', level: 'minimal' },
-]
-
-const batchFormOptions: Array<{ value: BatchForm; label: string }> = [
-  { value: 'whole', label: 'Whole mushrooms' },
-  { value: 'ground', label: 'Ground powder' },
-  { value: 'capsule', label: 'Capsules' },
-  { value: 'chocolate', label: 'Chocolate' },
-  { value: 'liquid', label: 'Liquid extract' },
-  { value: 'other', label: 'Other form' },
-]
-
-const potencyOptions: Array<{ value: EstimatedPotency; label: string; description: string }> = [
-  { value: 'low', label: 'Low', description: 'Milder than average' },
-  { value: 'medium', label: 'Medium', description: 'Average strength' },
-  { value: 'high', label: 'High', description: 'Stronger than average' },
-  { value: 'unknown', label: 'Unknown', description: 'Not sure yet' },
 ]
 
 interface OnboardingState {
   substance_type: SubstanceType | null
   other_substance: string
-  sensitivity: number
-  north_star: NorthStar | null
-  guidance_level: GuidanceLevel
-  first_batch: {
-    name: string
-    form: BatchForm
-    estimated_potency: EstimatedPotency
-    source_notes: string
+  first_batch_name: string
+}
+
+const DEFAULT_SENSITIVITY = 3
+const DEFAULT_NORTH_STAR: NorthStar = 'clarity'
+const DEFAULT_GUIDANCE_LEVEL: GuidanceLevel = 'guided'
+const DEFAULT_BATCH_POTENCY: EstimatedPotency = 'unknown'
+
+function getBatchDefaults(substance: SubstanceType): { form: BatchForm; doseUnit: 'mg' | 'ug' } {
+  switch (substance) {
+    case 'lsd':
+      return { form: 'paper', doseUnit: 'ug' }
+    case 'other':
+      return { form: 'whole', doseUnit: 'mg' }
+    case 'psilocybin':
+    default:
+      return { form: 'ground', doseUnit: 'mg' }
   }
-  skip_batch: boolean
 }
 
 export default function OnboardingSteps() {
   const router = useRouter()
-  const [step, setStep] = useState(0)
-  const [welcomeVisible, setWelcomeVisible] = useState(false)
+  const [step, setStep] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [stepError, setStepError] = useState<string | null>(null)
   const [state, setState] = useState<OnboardingState>({
     substance_type: null,
     other_substance: '',
-    sensitivity: 3,
-    north_star: null,
-    guidance_level: 'guided',
-    first_batch: {
-      name: '',
-      form: 'whole',
-      estimated_potency: 'unknown',
-      source_notes: '',
-    },
-    skip_batch: false,
+    first_batch_name: '',
   })
 
-  useEffect(() => {
-    setWelcomeVisible(true)
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const isRedo = params.get('redo') === '1' || params.get('dev') === '1'
-      if (isRedo) {
-        setStep(1)
-      }
-    }
-  }, [])
-
-  const currentStepConfig = step > 0 ? stepConfig[step - 1] : stepConfig[0]
+  const currentStepConfig = stepConfig[step - 1]
   const StepIcon = currentStepConfig.icon
-
-  const progressPercent = step > 0 ? ((step - 1) / (TOTAL_STEPS - 1)) * 100 : 0
+  const progressPercent = ((step - 1) / (TOTAL_STEPS - 1)) * 100
 
   const substanceDisplay = useMemo(() => {
     if (state.substance_type === 'other') {
@@ -181,10 +100,41 @@ export default function OnboardingSteps() {
     return selected?.label ?? 'Not selected'
   }, [state.other_substance, state.substance_type])
 
-  const northStarDisplay = useMemo(() => {
-    const selected = northStarOptions.find((option) => option.value === state.north_star)
-    return selected?.label ?? 'Not selected'
-  }, [state.north_star])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const isRedo = params.get('redo') === '1' || params.get('dev') === '1'
+      if (!isRedo) return
+      setStep(1)
+    }
+  }, [])
+
+  const validateStepOne = () => {
+    if (!state.substance_type) {
+      setStepError('Please select a substance to continue.')
+      return false
+    }
+    if (state.substance_type === 'other' && !state.other_substance.trim()) {
+      setStepError('Please name the substance you want to track.')
+      return false
+    }
+    if (!state.first_batch_name.trim()) {
+      setStepError('Please enter your first batch name.')
+      return false
+    }
+    return true
+  }
+
+  const goToStep = (targetStep: number) => {
+    if (submitting) return
+    setStepError(null)
+
+    if (targetStep > step && step === 1 && !validateStepOne()) {
+      return
+    }
+
+    setStep(Math.max(1, Math.min(TOTAL_STEPS, targetStep)))
+  }
 
   const handleCheckOutApp = () => {
     try {
@@ -195,44 +145,9 @@ export default function OnboardingSteps() {
     router.push('/compass?preview=1')
   }
 
-  const goToStep = (targetStep: number) => {
-    if (submitting) return
-    setStepError(null)
-    
-    // Validate current step before moving forward
-    if (targetStep > step) {
-      if (step === 1 && !state.substance_type) {
-        setStepError('Please select a substance to continue')
-        return
-      }
-      if (step === 1 && state.substance_type === 'other' && !state.other_substance.trim()) {
-        setStepError('Please specify your substance')
-        return
-      }
-      if (step === 3 && !state.north_star) {
-        setStepError('Please select your intention')
-        return
-      }
-      if (step === 4 && !state.skip_batch && !state.first_batch.name.trim()) {
-        setStepError('Please enter a batch name or skip this step')
-        return
-      }
-    }
-    
-    setStep(Math.max(1, Math.min(TOTAL_STEPS, targetStep)))
-  }
-
-  const handleSkipBatch = () => {
-    setState(prev => ({ ...prev, skip_batch: true }))
-    goToStep(5)
-  }
-
   const handleComplete = async () => {
     if (submitting) return
-    if (!state.substance_type || !state.north_star) {
-      setStepError('Please complete all required steps')
-      return
-    }
+    if (!validateStepOne()) return
 
     setSubmitting(true)
     setStepError(null)
@@ -246,15 +161,21 @@ export default function OnboardingSteps() {
         return
       }
 
-      // Create user profile
+      const substanceType = state.substance_type as SubstanceType
+      const batchDefaults = getBatchDefaults(substanceType)
+      const batchSourceNote =
+        substanceType === 'other' && state.other_substance.trim().length > 0
+          ? `Substance label: ${state.other_substance.trim()}`
+          : null
+
       const { error: profileError } = await supabase.from('users').upsert(
         {
           id: anonUserId,
           email: `anon_${anonUserId.slice(0, 8)}@localhost`,
-          substance_type: state.substance_type,
-          sensitivity: state.sensitivity,
-          north_star: state.north_star,
-          guidance_level: state.guidance_level,
+          substance_type: substanceType,
+          sensitivity: DEFAULT_SENSITIVITY,
+          north_star: DEFAULT_NORTH_STAR,
+          guidance_level: DEFAULT_GUIDANCE_LEVEL,
           onboarding_complete: false,
         },
         { onConflict: 'id' }
@@ -269,31 +190,27 @@ export default function OnboardingSteps() {
         throw profileError
       }
 
-      // Create batch if not skipped
-      if (!state.skip_batch && state.first_batch.name.trim()) {
-        const sourceNotes = state.first_batch.source_notes.trim()
-        const { error: batchError } = await supabase.from('batches').insert({
-          user_id: anonUserId,
-          name: state.first_batch.name.trim(),
-          substance_type: state.substance_type,
-          form: state.first_batch.form,
-          estimated_potency: state.first_batch.estimated_potency,
-          source_notes: sourceNotes.length > 0 ? sourceNotes : null,
-          is_active: true,
-          calibration_status: 'uncalibrated',
-        })
+      const { error: batchError } = await supabase.from('batches').insert({
+        user_id: anonUserId,
+        name: state.first_batch_name.trim(),
+        substance_type: substanceType,
+        form: batchDefaults.form,
+        estimated_potency: DEFAULT_BATCH_POTENCY,
+        source_notes: batchSourceNote,
+        dose_unit: batchDefaults.doseUnit,
+        is_active: true,
+        calibration_status: 'uncalibrated',
+      })
 
-        if (batchError) {
-          if (isSchemaCacheTableMissingError(batchError, 'batches')) {
-            setStepError(getSchemaSetupMessage('batches'))
-            setSubmitting(false)
-            return
-          }
-          throw batchError
+      if (batchError) {
+        if (isSchemaCacheTableMissingError(batchError, 'batches')) {
+          setStepError(getSchemaSetupMessage('batches'))
+          setSubmitting(false)
+          return
         }
+        throw batchError
       }
 
-      // Mark onboarding complete
       const { error: completionError } = await supabase
         .from('users')
         .update({ onboarding_complete: true })
@@ -308,7 +225,7 @@ export default function OnboardingSteps() {
         throw completionError
       }
 
-      router.push('/compass')
+      router.push('/log')
     } catch (error) {
       console.error('Onboarding error:', error)
       if (isSchemaCacheTableMissingError(error)) {
@@ -320,41 +237,17 @@ export default function OnboardingSteps() {
     }
   }
 
-  if (step === 0) {
-    return (
-      <div
-        className={`fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-base px-6 text-center transition-opacity duration-[800ms] ease-out ${
-          welcomeVisible ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <div>
-          <h1 className="font-mono text-2xl text-ivory">Welcome to the Compass.</h1>
-          <p className="mx-auto mt-4 max-w-md text-sm text-bone">
-            This is a precision instrument for mapping your unique threshold. 
-            Not a one-size-fits-all protocol, but a systematic approach to understanding 
-            your personal response landscape.
-          </p>
-          <Button className="mt-8 min-h-[48px]" onClick={() => setStep(1)}>
-            Begin Setup
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-base text-ivory">
-      {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <div className="h-1 bg-elevated">
-          <div 
-            className="h-full bg-gradient-to-r from-orange to-ember transition-all duration-[800ms] ease-out"
+          <div
+            className="h-full bg-gradient-to-r from-orange to-ember transition-all duration-[500ms] ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-base/80 backdrop-blur-md border-b border-ember/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -374,23 +267,16 @@ export default function OnboardingSteps() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-24 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
-          {/* Step Title */}
           <div className="text-center mb-8 sm:mb-12">
             <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-orange/10 border border-orange/20 mb-4">
               <StepIcon className="w-6 h-6 sm:w-8 sm:h-8 text-orange" />
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-2">
-              {currentStepConfig.title}
-            </h1>
-            <p className="text-bone text-sm sm:text-base max-w-md mx-auto">
-              {currentStepConfig.description}
-            </p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-2">{currentStepConfig.title}</h1>
+            <p className="text-bone text-sm sm:text-base max-w-md mx-auto">{currentStepConfig.description}</p>
           </div>
 
-          {/* Error Message */}
           {stepError && (
             <div className="mb-6 p-4 rounded-xl bg-status-elevated/10 border border-status-elevated/30 text-status-elevated text-sm">
               <p>{stepError}</p>
@@ -404,270 +290,67 @@ export default function OnboardingSteps() {
             </div>
           )}
 
-          {/* Step Content */}
           <div className="space-y-6">
-            {/* Step 1: Substance */}
             {step === 1 && (
-              <div className="grid gap-4 sm:gap-6">
-                {substanceOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    disabled={submitting}
-                    onClick={() => setState(prev => ({ 
-                      ...prev, 
-                      substance_type: option.value,
-                      other_substance: option.value === 'other' ? prev.other_substance : ''
-                    }))}
-                    className={`group relative p-5 sm:p-6 rounded-2xl border-2 text-left transition-all duration-[800ms] ease-out min-h-[44px] disabled:opacity-50 ${
-                      state.substance_type === option.value
-                        ? 'border-orange bg-orange/5'
-                        : 'border-ember/20 bg-surface hover:border-ember/40'
-                    }`}
-                  >
-                    <div className="relative z-10">
-                      <h3 className="text-lg sm:text-xl font-semibold mb-1">{option.label}</h3>
-                      <p className="text-sm text-bone">{option.description}</p>
-                    </div>
-                    {state.substance_type === option.value && (
-                      <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-orange flex items-center justify-center">
-                        <Check className="w-4 h-4 text-base" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-                
-                {state.substance_type === 'other' && (
-                  <div className="p-5 sm:p-6 rounded-2xl border-2 border-orange/30 bg-surface">
-                    <Input
-                      label="What substance are you working with?"
-                      value={state.other_substance}
-                      onChange={(e) => setState(prev => ({ ...prev, other_substance: e.target.value }))}
-                      placeholder="e.g., Mescaline, DMT, etc."
-                      className="bg-elevated"
-                      disabled={submitting}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 2: Sensitivity */}
-            {step === 2 && (
-              <div className="space-y-6 sm:space-y-8">
-                <div className="p-5 sm:p-6 rounded-2xl bg-surface border border-ember/20">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-bone">Sensitivity Level</span>
-                    <span className="text-2xl sm:text-3xl font-bold text-orange">{state.sensitivity}</span>
-                  </div>
-                  <Slider
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={state.sensitivity}
-                    onChange={(value) => setState(prev => ({ ...prev, sensitivity: value }))}
-                    disabled={submitting}
-                  />
-                  <div className="flex justify-between mt-2 text-xs text-ash">
-                    <span>Very Low</span>
-                    <span>Average</span>
-                    <span>Very High</span>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:gap-4">
-                  {sensitivityOptions.map((option) => (
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:gap-6">
+                  {substanceOptions.map((option) => (
                     <button
                       key={option.value}
                       disabled={submitting}
-                      onClick={() => setState(prev => ({ ...prev, sensitivity: option.value }))}
-                      className={`p-4 sm:p-5 rounded-xl border text-left transition-all duration-[800ms] ease-out min-h-[44px] ${
-                        state.sensitivity === option.value
-                          ? 'border-orange bg-orange/10'
+                      onClick={() =>
+                        setState((prev) => ({
+                          ...prev,
+                          substance_type: option.value,
+                          other_substance: option.value === 'other' ? prev.other_substance : '',
+                        }))
+                      }
+                      className={`group relative p-5 sm:p-6 rounded-2xl border-2 text-left transition-all duration-300 min-h-[44px] disabled:opacity-50 ${
+                        state.substance_type === option.value
+                          ? 'border-orange bg-orange/5'
                           : 'border-ember/20 bg-surface hover:border-ember/40'
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <span className={`text-lg font-bold ${
-                          state.sensitivity === option.value ? 'text-orange' : 'text-ash'
-                        }`}>
-                          {option.value}
-                        </span>
-                        <div>
-                          <h4 className="font-medium">{option.title}</h4>
-                          <p className="text-sm text-bone">{option.description}</p>
-                        </div>
+                      <div className="relative z-10">
+                        <h3 className="text-lg sm:text-xl font-semibold mb-1">{option.label}</h3>
+                        <p className="text-sm text-bone">{option.description}</p>
                       </div>
+                      {state.substance_type === option.value && (
+                        <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-orange flex items-center justify-center">
+                          <Check className="w-4 h-4 text-base" />
+                        </div>
+                      )}
                     </button>
                   ))}
-                </div>
-              </div>
-            )}
 
-            {/* Step 3: Intention & Guidance */}
-            {step === 3 && (
-              <div className="space-y-8">
-                {/* North Star */}
-                <div>
-                  <h3 className="text-sm font-mono uppercase tracking-wider text-bone mb-4">Your North Star</h3>
-                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {northStarOptions.map((option) => (
-                      <button
-                        key={option.value}
+                  {state.substance_type === 'other' && (
+                    <div className="p-5 sm:p-6 rounded-2xl border-2 border-orange/30 bg-surface">
+                      <Input
+                        label="Substance name"
+                        value={state.other_substance}
+                        onChange={(e) => setState((prev) => ({ ...prev, other_substance: e.target.value }))}
+                        placeholder="e.g., Mescaline"
+                        className="bg-elevated"
                         disabled={submitting}
-                        onClick={() => setState(prev => ({ ...prev, north_star: option.value }))}
-                        className={`p-4 sm:p-5 rounded-xl border text-left transition-all duration-[800ms] ease-out min-h-[44px] ${
-                          state.north_star === option.value
-                            ? 'border-orange bg-orange/10'
-                            : 'border-ember/20 bg-surface hover:border-ember/40'
-                        }`}
-                      >
-                        <h4 className="font-semibold mb-1">{option.label}</h4>
-                        <p className="text-xs text-bone">{option.description}</p>
-                      </button>
-                    ))}
-                  </div>
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Guidance Level */}
-                <div>
-                  <h3 className="text-sm font-mono uppercase tracking-wider text-bone mb-4">Guidance Level</h3>
-                  <div className="space-y-3">
-                    {guidanceOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        disabled={submitting}
-                        onClick={() => setState(prev => ({ ...prev, guidance_level: option.value }))}
-                        className={`w-full p-4 sm:p-5 rounded-xl border text-left transition-all duration-[800ms] ease-out flex items-center gap-4 min-h-[44px] ${
-                          state.guidance_level === option.value
-                            ? 'border-orange bg-orange/10'
-                            : 'border-ember/20 bg-surface hover:border-ember/40'
-                        }`}
-                      >
-                        <div className={`w-3 h-3 rounded-full ${
-                          option.level === 'full' ? 'bg-orange' :
-                          option.level === 'medium' ? 'bg-status-mild' : 'bg-ash'
-                        }`} />
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{option.label}</h4>
-                          <p className="text-xs text-bone">{option.description}</p>
-                        </div>
-                        {state.guidance_level === option.value && (
-                          <Check className="w-5 h-5 text-orange" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                <div className="p-5 sm:p-6 rounded-2xl bg-surface border border-ember/20">
+                  <Input
+                    label="First batch name"
+                    value={state.first_batch_name}
+                    onChange={(e) => setState((prev) => ({ ...prev, first_batch_name: e.target.value }))}
+                    placeholder="e.g., Golden Teacher Batch A"
+                    disabled={submitting}
+                  />
+                  <p className="mt-3 text-xs text-ash">You can edit potency and details later from Batch Manager.</p>
                 </div>
               </div>
             )}
 
-            {/* Step 4: Batch */}
-            {step === 4 && (
-              <div className="space-y-6">
-                {!state.skip_batch ? (
-                  <>
-                    <div className="p-5 sm:p-6 rounded-2xl bg-surface border border-ember/20">
-                      <div className="flex items-center gap-2 mb-4">
-                        <FlaskConical className="w-5 h-5 text-orange" />
-                        <span className="text-sm font-medium">Creating batch for: {substanceDisplay}</span>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <Input
-                          label="Batch name *"
-                          value={state.first_batch.name}
-                          onChange={(e) => setState(prev => ({
-                            ...prev,
-                            first_batch: { ...prev.first_batch, name: e.target.value }
-                          }))}
-                          placeholder="e.g., Golden Teacher Batch A"
-                          disabled={submitting}
-                        />
-
-                        <Select
-                          label="Form"
-                          value={state.first_batch.form}
-                          onChange={(e) => setState(prev => ({
-                            ...prev,
-                            first_batch: { ...prev.first_batch, form: e.target.value as BatchForm }
-                          }))}
-                          options={batchFormOptions}
-                          disabled={submitting}
-                        />
-
-                        <div>
-                          <label className="block text-sm font-medium text-bone mb-2">Estimated Potency</label>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {potencyOptions.map((option) => (
-                              <button
-                                key={option.value}
-                                disabled={submitting}
-                                onClick={() => setState(prev => ({
-                                  ...prev,
-                                  first_batch: { ...prev.first_batch, estimated_potency: option.value }
-                                }))}
-                                className={`p-3 rounded-lg border text-sm transition-all min-h-[44px] ${
-                                  state.first_batch.estimated_potency === option.value
-                                    ? 'border-orange bg-orange/10 text-orange'
-                                    : 'border-ember/20 bg-elevated hover:border-ember/40'
-                                }`}
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-bone mb-2">Source Notes (optional)</label>
-                          <textarea
-                            value={state.first_batch.source_notes}
-                            onChange={(e) => setState(prev => ({
-                              ...prev,
-                              first_batch: { ...prev.first_batch, source_notes: e.target.value }
-                            }))}
-                            placeholder="Where did you get this? Any handling notes?"
-                            rows={3}
-                            disabled={submitting}
-                            className="w-full px-4 py-3 rounded-lg bg-elevated border border-ember/30 text-ivory placeholder:text-ash focus:border-orange focus:outline-none resize-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Skip Option */}
-                    <button
-                      onClick={handleSkipBatch}
-                      disabled={submitting}
-                      className="w-full p-4 rounded-xl border border-dashed border-ember/30 text-ash hover:text-ivory hover:border-ember/50 transition-all flex items-center justify-center gap-2 min-h-[44px]"
-                    >
-                      <SkipForward className="w-4 h-4" />
-                      Skip batch creation for now
-                    </button>
-                  </>
-                ) : (
-                  <div className="p-8 rounded-2xl bg-surface border border-ember/20 text-center">
-                    <div className="w-16 h-16 rounded-full bg-status-mild/20 flex items-center justify-center mx-auto mb-4">
-                      <SkipForward className="w-8 h-8 text-status-mild" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">Batch creation skipped</h3>
-                    <p className="text-sm text-bone mb-4">
-                      You can create a batch later from the Batch Management page.
-                    </p>
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, skip_batch: false }))}
-                      disabled={submitting}
-                      className="text-orange hover:underline text-sm min-h-[44px] px-4"
-                    >
-                      Go back and create a batch
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 5: Review */}
-            {step === 5 && (
+            {step === 2 && (
               <div className="space-y-6">
                 <div className="p-6 rounded-2xl bg-orange/5 border border-orange/20">
                   <div className="flex items-center gap-3 mb-6">
@@ -675,8 +358,8 @@ export default function OnboardingSteps() {
                       <Check className="w-5 h-5 text-orange" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Review your setup</h3>
-                      <p className="text-sm text-bone">Confirm before entering the Compass</p>
+                      <h3 className="font-semibold">Start fast</h3>
+                      <p className="text-sm text-bone">Your first dose can be logged in one screen.</p>
                     </div>
                   </div>
 
@@ -685,30 +368,16 @@ export default function OnboardingSteps() {
                       <span className="text-bone text-sm">Substance</span>
                       <span className="font-medium">{substanceDisplay}</span>
                     </div>
-                    <div className="flex justify-between items-center py-3 border-b border-ember/20">
-                      <span className="text-bone text-sm">Sensitivity</span>
-                      <span className="font-medium">Level {state.sensitivity}/5</span>
-                    </div>
-                    <div className="flex justify-between items-center py-3 border-b border-ember/20">
-                      <span className="text-bone text-sm">North Star</span>
-                      <span className="font-medium">{northStarDisplay}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-3 border-b border-ember/20">
-                      <span className="text-bone text-sm">Guidance</span>
-                      <span className="font-medium capitalize">{state.guidance_level}</span>
-                    </div>
                     <div className="flex justify-between items-center py-3">
-                      <span className="text-bone text-sm">First Batch</span>
-                      <span className="font-medium">
-                        {state.skip_batch ? 'Skipped' : (state.first_batch.name || 'Not set')}
-                      </span>
+                      <span className="text-bone text-sm">Batch</span>
+                      <span className="font-medium">{state.first_batch_name.trim()}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-status-clear/10 border border-status-clear/30 text-sm">
                   <p className="text-bone">
-                    <strong className="text-ivory">Note:</strong> You can change any of these settings later from the Settings page.
+                    <strong className="text-ivory">Defaults set:</strong> Sensitivity {DEFAULT_SENSITIVITY}/5, North Star {DEFAULT_NORTH_STAR}, Guidance {DEFAULT_GUIDANCE_LEVEL}.
                   </p>
                 </div>
               </div>
@@ -717,11 +386,9 @@ export default function OnboardingSteps() {
         </div>
       </main>
 
-      {/* Footer Navigation */}
       <footer className="fixed bottom-0 left-0 right-0 bg-base/90 backdrop-blur-md border-t border-ember/10">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-4">
-            {/* Back Button */}
             <button
               onClick={() => goToStep(step - 1)}
               disabled={step === 1 || submitting}
@@ -731,18 +398,17 @@ export default function OnboardingSteps() {
               <span className="hidden sm:inline">Back</span>
             </button>
 
-            {/* Step Indicators */}
             <div className="flex items-center gap-2">
               {stepConfig.map((s) => {
                 const isActive = step === s.id
                 const isComplete = step > s.id
-                
+
                 return (
                   <button
                     key={s.id}
                     onClick={() => goToStep(s.id)}
                     disabled={submitting}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-[800ms] ease-out ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                       isActive
                         ? 'bg-orange text-base'
                         : isComplete
@@ -750,17 +416,12 @@ export default function OnboardingSteps() {
                           : 'bg-elevated text-ash'
                     }`}
                   >
-                    {isComplete ? (
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      <span className="text-xs sm:text-sm font-medium">{s.id}</span>
-                    )}
+                    {isComplete ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <span className="text-xs sm:text-sm font-medium">{s.id}</span>}
                   </button>
                 )
               })}
             </div>
 
-            {/* Next/Complete Button */}
             {step < TOTAL_STEPS ? (
               <button
                 onClick={() => goToStep(step + 1)}
@@ -779,12 +440,12 @@ export default function OnboardingSteps() {
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="hidden sm:inline">Setting up...</span>
+                    <span>Starting...</span>
                   </>
                 ) : (
                   <>
-                    <span className="hidden sm:inline">Enter Compass</span>
-                    <Compass className="w-4 h-4" />
+                    <span>Start Logging</span>
+                    <Check className="w-4 h-4" />
                   </>
                 )}
               </button>

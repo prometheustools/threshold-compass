@@ -1,53 +1,70 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import LoadingState from '@/components/ui/LoadingState'
 
+function formatDose(value: number, unit: 'mg' | 'µg'): string {
+  const decimals = Number.isInteger(value) ? 0 : 2
+  return `${value.toFixed(decimals)}${unit}`
+}
+
 function DiscoveryCompleteContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [floor, setFloor] = useState<number | null>(null)
-  const [sweetSpot, setSweetSpot] = useState<number | null>(null)
-  const [ceiling, setCeiling] = useState<number | null>(null)
-  const [confidence, setConfidence] = useState<number | null>(null)
-  const [qualifier, setQualifier] = useState<string | null>(null)
   const [showFloor, setShowFloor] = useState(false)
   const [showSweetSpot, setShowSweetSpot] = useState(false)
   const [showCeiling, setShowCeiling] = useState(false)
 
-  useEffect(() => {
+  const parsedRange = useMemo(() => {
     const floorParam = searchParams.get('floor')
     const sweetSpotParam = searchParams.get('sweet_spot')
     const ceilingParam = searchParams.get('ceiling')
     const confidenceParam = searchParams.get('confidence')
     const qualifierParam = searchParams.get('qualifier')
+    const unitParam = searchParams.get('unit')
 
-    if (floorParam && sweetSpotParam && ceilingParam && confidenceParam && qualifierParam) {
-      setFloor(parseFloat(floorParam))
-      setSweetSpot(parseFloat(sweetSpotParam))
-      setCeiling(parseFloat(ceilingParam))
-      setConfidence(parseInt(confidenceParam))
-      setQualifier(decodeURIComponent(qualifierParam))
+    if (!floorParam || !sweetSpotParam || !ceilingParam || !confidenceParam || !qualifierParam) {
+      return null
+    }
 
-      setTimeout(() => setShowFloor(true), 800)
-      setTimeout(() => setShowSweetSpot(true), 1600)
-      setTimeout(() => setShowCeiling(true), 2400)
-    } else {
-      setTimeout(() => {
+    return {
+      floor: parseFloat(floorParam),
+      sweetSpot: parseFloat(sweetSpotParam),
+      ceiling: parseFloat(ceilingParam),
+      confidence: parseInt(confidenceParam, 10),
+      qualifier: decodeURIComponent(qualifierParam),
+      unit: unitParam === 'µg' || unitParam === 'ug' ? ('µg' as const) : ('mg' as const),
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!parsedRange) {
+      const redirectTimer = setTimeout(() => {
         router.push('/compass')
       }, 3000)
+      return () => clearTimeout(redirectTimer)
     }
-  }, [searchParams, router])
+
+    const floorTimer = setTimeout(() => setShowFloor(true), 800)
+    const sweetSpotTimer = setTimeout(() => setShowSweetSpot(true), 1600)
+    const ceilingTimer = setTimeout(() => setShowCeiling(true), 2400)
+
+    return () => {
+      clearTimeout(floorTimer)
+      clearTimeout(sweetSpotTimer)
+      clearTimeout(ceilingTimer)
+    }
+  }, [parsedRange, router])
 
   const handleContinue = () => {
     router.push('/compass')
   }
 
-  if (floor === null || sweetSpot === null || ceiling === null) {
+  if (!parsedRange) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-base text-ivory p-4">
         <Card padding="lg" className="w-full max-w-md text-center">
@@ -71,7 +88,7 @@ function DiscoveryCompleteContent() {
               ${showFloor ? 'bg-status-clear/20 opacity-100' : 'opacity-0'}
             `}
           >
-            <p className="font-mono text-lg text-ivory">Floor: {floor}mg</p>
+            <p className="font-mono text-lg text-ivory">Floor: {formatDose(parsedRange.floor, parsedRange.unit)}</p>
             <p className="font-sans text-bone text-sm">Below this, you feel nothing.</p>
           </div>
 
@@ -81,7 +98,7 @@ function DiscoveryCompleteContent() {
               ${showSweetSpot ? 'bg-status-mild/20 opacity-100' : 'opacity-0'}
             `}
           >
-            <p className="font-mono text-lg text-ivory">Sweet Spot: {sweetSpot}mg</p>
+            <p className="font-mono text-lg text-ivory">Sweet Spot: {formatDose(parsedRange.sweetSpot, parsedRange.unit)}</p>
             <p className="font-sans text-bone text-sm">Your threshold zone.</p>
           </div>
 
@@ -91,15 +108,15 @@ function DiscoveryCompleteContent() {
               ${showCeiling ? 'bg-status-elevated/20 opacity-100' : 'opacity-0'}
             `}
           >
-            <p className="font-mono text-lg text-ivory">Ceiling: {ceiling}mg</p>
+            <p className="font-mono text-lg text-ivory">Ceiling: {formatDose(parsedRange.ceiling, parsedRange.unit)}</p>
             <p className="font-sans text-bone text-sm">Above this, interference rises.</p>
           </div>
         </div>
 
         {showCeiling && (
           <div className="text-bone transition-opacity duration-800 ease-out opacity-100">
-            {confidence !== null && <p className="font-sans text-sm mt-4">Confidence: {confidence}%</p>}
-            {qualifier && <p className="font-sans text-sm">{qualifier}</p>}
+            <p className="font-sans text-sm mt-4">Confidence: {parsedRange.confidence}%</p>
+            <p className="font-sans text-sm">{parsedRange.qualifier}</p>
           </div>
         )}
 

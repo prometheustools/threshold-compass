@@ -82,6 +82,8 @@ const medicationStorageKey = 'threshold_compass_medications'
 
 const MAX_DOSE_MG = 5000
 const MAX_DOSE_UG = 1000
+const MIN_DOSE_MG = 0.01
+const MIN_DOSE_UG = 1
 
 type MedicationRiskLevel = 'high' | 'moderate'
 
@@ -187,6 +189,10 @@ function getErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error && 'message' in error) {
     const message = (error as { message?: unknown }).message
     if (typeof message === 'string') {
+      const normalized = message.toLowerCase()
+      if (normalized.includes('numeric field overflow') || normalized.includes('out of range for type numeric')) {
+        return 'Dose must be between 0.01 and 5000 mg (or 1 and 1000 µg for LSD).'
+      }
       return message
     }
   }
@@ -200,6 +206,9 @@ function asAmountString(value: number): string {
 
 function validateAmount(value: string, unit: 'mg' | 'ug'): ValidationError {
   const parsed = Number.parseFloat(value)
+  const minAmount = unit === 'ug' ? MIN_DOSE_UG : MIN_DOSE_MG
+  const maxAmount = unit === 'ug' ? MAX_DOSE_UG : MAX_DOSE_MG
+  const unitLabel = unit === 'ug' ? 'µg' : 'mg'
   
   if (!value || value.trim() === '') {
     return { amount: 'Enter a dose amount' }
@@ -213,15 +222,10 @@ function validateAmount(value: string, unit: 'mg' | 'ug'): ValidationError {
     return { amount: 'Amount must be greater than zero' }
   }
   
-  if (parsed < 0.01) {
-    return { amount: 'Amount too small' }
+  if (parsed < minAmount || parsed > maxAmount) {
+    return { amount: `Dose must be between ${minAmount} and ${maxAmount} ${unitLabel}` }
   }
-  
-  const maxAmount = unit === 'ug' ? MAX_DOSE_UG : MAX_DOSE_MG
-  if (parsed > maxAmount) {
-    return { amount: `Amount exceeds maximum (${maxAmount} ${unit})` }
-  }
-  
+
   return {}
 }
 
@@ -638,7 +642,9 @@ export default function DoseForm() {
                 router.push(
                   `/discovery/complete?floor=${range.floor_dose}&sweet_spot=${range.sweet_spot}&ceiling=${
                     range.ceiling_dose
-                  }&confidence=${range.confidence}&qualifier=${encodeURIComponent(range.qualifier)}`
+                  }&confidence=${range.confidence}&qualifier=${encodeURIComponent(range.qualifier)}&unit=${encodeURIComponent(
+                    unitLabel
+                  )}`
                 )
               } else {
                 console.error('Failed to fetch threshold range:', thresholdRangeResponse.statusText)

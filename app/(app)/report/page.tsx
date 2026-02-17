@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Batch, ThresholdRange, User, DoseLog } from '@/types'
+import type { Batch, ThresholdRange, User } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCurrentUserId } from '@/lib/auth/anonymous'
 import Card from '@/components/ui/Card'

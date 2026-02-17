@@ -36,6 +36,10 @@
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
+
+  .h-safe-area-inset-bottom {
+    height: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @keyframes fadeIn {

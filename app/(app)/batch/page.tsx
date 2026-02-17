@@ -102,7 +102,7 @@ export default function BatchPage() {
         substance_type: formData.substance_type,
         form: formData.form,
         estimated_potency: formData.estimated_potency,
-        dose_unit: formData.dose_unit || 'mg',
+        dose_unit: formData.dose_unit || (formData.substance_type === 'lsd' ? 'ug' : 'mg'),
         supplements: formData.supplements || null,
         source_notes: formData.source_notes || null,
         is_active: true,
@@ -480,7 +480,7 @@ export default function BatchPage() {
             <p className="mb-1 text-sm text-ivory">
               This will reset the calibration status for <strong>{recalibrateTarget?.name}</strong>.
             </p>
-            <p className="mt-2 text-xs text-bone">You'll need to log 10 new doses to recalibrate your threshold range.</p>
+            <p className="mt-2 text-xs text-bone">You&apos;ll need to log 10 new doses to recalibrate your threshold range.</p>
           </div>
         </div>
         <div className="flex justify-end gap-2">

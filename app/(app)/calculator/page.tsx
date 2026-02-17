@@ -22,8 +22,8 @@ interface DoseRecommendation {
 const SUBSTANCE_DATA = {
   psilocybin: {
     name: 'Psilocybin',
-    unit: 'g',
-    baselineThreshold: 0.1, // mg
+    unit: 'mg',
+    baselineThreshold: 100, // milligrams
     potencyFactor: 1,
   },
   lsd: {
@@ -61,12 +61,12 @@ export default function CalculatorPage() {
 
     const rawThreshold = substance.baselineThreshold * expMod * weightFactor * sensitivityFactor / toleranceFactor
     
-    const threshold = inputs.substance === 'psilocybin' 
-      ? Math.round(rawThreshold * 1000) / 1000
+    const threshold = inputs.substance === 'psilocybin'
+      ? Math.round(rawThreshold)
       : Math.round(rawThreshold)
 
     const range = inputs.substance === 'psilocybin'
-      ? { min: Math.round(threshold * 0.7 * 1000) / 1000, max: Math.round(threshold * 1.3 * 1000) / 1000 }
+      ? { min: Math.round(threshold * 0.7), max: Math.round(threshold * 1.3) }
       : { min: Math.round(threshold * 0.7), max: Math.round(threshold * 1.3) }
 
     let description = ''
@@ -254,11 +254,11 @@ export default function CalculatorPage() {
                 <p className="text-4xl font-bold text-orange mb-2">
                   {result.threshold}
                   <span className="text-lg text-bone ml-1">
-                    {inputs.substance === 'psilocybin' ? 'g' : 'μg'}
+                    {inputs.substance === 'psilocybin' ? 'mg' : 'μg'}
                   </span>
                 </p>
                 <p className="text-bone">
-                  Range: {result.range.min} - {result.range.max} {inputs.substance === 'psilocybin' ? 'g' : 'μg'}
+                  Range: {result.range.min} - {result.range.max} {inputs.substance === 'psilocybin' ? 'mg' : 'μg'}
                 </p>
               </div>
 

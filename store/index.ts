@@ -28,7 +28,7 @@ const DEFAULT_CARRYOVER: CarryoverResult = {
   message: 'Full sensitivity expected.',
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
   user: null,
   activeBatch: null,
   carryover: DEFAULT_CARRYOVER,

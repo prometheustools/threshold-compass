@@ -6,20 +6,16 @@ import ConfidenceBadge from './ConfidenceBadge'
 
 interface ThresholdRangeProps {
   range: ThresholdRangeModel
-  unit: 'g' | 'µg'
+  unit: 'mg' | 'µg'
 }
 
-function formatDose(value: number | null, unit: 'g' | 'µg'): string {
+function formatDose(value: number | null, unit: 'mg' | 'µg'): string {
   if (value === null) {
     return '—'
   }
 
-  if (unit === 'µg') {
-    const decimals = Number.isInteger(value) ? 0 : 2
-    return `${value.toFixed(decimals)} ${unit}`
-  }
-
-  return `${value.toFixed(2)} ${unit}`
+  const decimals = Number.isInteger(value) ? 0 : 2
+  return `${value.toFixed(decimals)} ${unit}`
 }
 
 export default function ThresholdRange({ range, unit }: ThresholdRangeProps) {

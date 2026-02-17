@@ -12,7 +12,7 @@ export interface WeeklySnapshotProps {
   avgSignal: number | null
   avgTexture: number | null
   avgInterference: number | null
-  unit: 'g' | 'µg'
+  unit: 'mg' | 'µg'
 }
 
 const northStarLabels: Record<NorthStar, string> = {
@@ -23,17 +23,13 @@ const northStarLabels: Record<NorthStar, string> = {
   exploration: 'Exploration',
 }
 
-function formatDose(value: number | null, unit: 'g' | 'µg'): string {
+function formatDose(value: number | null, unit: 'mg' | 'µg'): string {
   if (value === null) {
     return '—'
   }
 
-  if (unit === 'µg') {
-    const decimals = Number.isInteger(value) ? 0 : 2
-    return `${value.toFixed(decimals)} ${unit}`
-  }
-
-  return `${value.toFixed(2)} ${unit}`
+  const decimals = Number.isInteger(value) ? 0 : 2
+  return `${value.toFixed(decimals)} ${unit}`
 }
 
 function formatAverage(value: number | null): string {

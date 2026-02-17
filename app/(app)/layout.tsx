@@ -31,26 +31,52 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Link>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-ember/20 bg-base backdrop-blur-sm">
-        <div className="mx-auto flex max-w-xl items-center justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-ember/20 bg-base/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-xl items-center justify-around px-2">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2 transition-settle ${
-                  isActive ? 'text-orange' : 'text-ash hover:text-bone'
+                className={`group relative flex min-h-[56px] min-w-[56px] flex-col items-center justify-center gap-1 px-3 py-2 transition-all duration-300 ${
+                  isActive 
+                    ? 'text-orange' 
+                    : 'text-ash hover:text-bone'
                 }`}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <Icon size={20} />
-                <span className="font-mono text-[10px] tracking-wider uppercase">{label}</span>
+                {/* Active indicator dot */}
+                {isActive && (
+                  <span className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-0.5 bg-orange rounded-full" />
+                )}
+                
+                {/* Icon container with hover/active background */}
+                <span className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300 ${
+                  isActive 
+                    ? 'bg-orange/10' 
+                    : 'group-hover:bg-elevated/50'
+                }`}>
+                  <Icon 
+                    size={20} 
+                    strokeWidth={isActive ? 2.5 : 2}
+                    className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
+                  />
+                </span>
+                
+                {/* Label */}
+                <span className={`font-mono text-[10px] tracking-wider uppercase transition-all duration-300 ${
+                  isActive ? 'font-semibold' : ''
+                }`}>
+                  {label}
+                </span>
               </Link>
             )
           })}
         </div>
+        {/* Safe area spacer for iOS */}
+        <div className="h-safe-area-inset-bottom bg-base" />
       </nav>
     </div>
   )

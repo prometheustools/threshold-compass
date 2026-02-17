@@ -19,7 +19,7 @@ interface CompassVisualizationProps {
   carryoverTier?: CarryoverTier
   carryoverPercentage?: number
   lastDoseAmount?: number | null
-  unit: 'g' | 'µg'
+  unit: 'mg' | 'µg'
   calibrationStatus?: CalibrationStatus
 }
 
@@ -361,7 +361,7 @@ export default function CompassVisualization({
                 textAnchor="middle"
                 className="font-mono text-[8px] uppercase tracking-wider fill-orange"
               >
-                SWEET SPOT: {formatDoseValue(thresholdRange.sweet_spot, unit)}{unit}
+                SWEET SPOT: {formatDoseValue(thresholdRange.sweet_spot)}{unit}
               </text>
             )}
             {thresholdRange.confidence !== null && (
@@ -484,12 +484,9 @@ export default function CompassVisualization({
   )
 }
 
-function formatDoseValue(value: number, unit: 'g' | 'µg'): string {
-  if (unit === 'µg') {
-    return Number.isInteger(value) ? `${value}` : value.toFixed(2)
-  }
-
-  return value.toFixed(2)
+function formatDoseValue(value: number): string {
+  const decimals = Number.isInteger(value) ? 0 : 2
+  return value.toFixed(decimals)
 }
 
 // Utility function to create arc path

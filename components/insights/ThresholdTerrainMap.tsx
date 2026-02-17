@@ -181,10 +181,10 @@ export default function ThresholdTerrainMap({ range, doses, className = '' }: Th
 
       <div className="mt-3 flex items-center justify-between text-xs">
         <span className="text-bone">Sweet Spot</span>
-        <span className="font-mono text-orange">{terrain.optimal.toFixed(3)}g</span>
+        <span className="font-mono text-orange">{terrain.optimal.toFixed(0)}mg</span>
       </div>
       <div className="mt-1 text-xs text-ash">
-        Range {terrain.lowEnd.toFixed(2)}g to {terrain.highEnd.toFixed(2)}g
+        Range {terrain.lowEnd.toFixed(0)}mg to {terrain.highEnd.toFixed(0)}mg
       </div>
 
       <div className="mt-3 flex justify-center gap-3 text-[11px] text-bone">

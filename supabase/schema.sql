@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS dose_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   batch_id UUID NOT NULL REFERENCES batches(id),
-  amount DECIMAL(6,4) NOT NULL CHECK (amount > 0),
+  amount DECIMAL(8,4) NOT NULL CHECK (amount > 0),
   unit TEXT NOT NULL DEFAULT 'mg',
   dosed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS dose_logs (
   context_tags TEXT[] DEFAULT NULL,
   timing_tag TEXT DEFAULT NULL CHECK (timing_tag IN ('morning', 'midday', 'afternoon')),
   carryover_score INTEGER DEFAULT NULL CHECK (carryover_score BETWEEN 0 AND 100),
-  effective_dose DECIMAL(6,4) DEFAULT NULL,
+  effective_dose DECIMAL(8,4) DEFAULT NULL,
 
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -71,12 +71,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Batch ID is required' }, { status: 400 })
   }
 
+  const { data: batch, error: batchError } = await supabase
+    .from('batches')
+    .select('id, dose_unit')
+    .eq('id', batch_id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (batchError) {
+    return NextResponse.json({ error: batchError.message }, { status: 500 })
+  }
+
+  if (!batch) {
+    return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
+  }
+
+  const normalizedUnit = unit === 'ug' || unit === 'mg' ? unit : (batch.dose_unit === 'ug' ? 'ug' : 'mg')
+
   const { data, error } = await supabase
     .from('dose_logs')
     .insert({
       user_id: user.id,
       amount,
-      unit: unit ?? 'mg',
+      unit: normalizedUnit,
       batch_id,
       notes: notes ?? null,
       preparation: preparation ?? null,

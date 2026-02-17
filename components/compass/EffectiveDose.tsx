@@ -6,10 +6,10 @@ interface EffectiveDoseProps {
   amount: number // last dose amount
   effectiveMultiplier: number // 1 - (carryover / 100)
   guidanceLevel: GuidanceLevel
-  unit: 'g' | 'µg'
+  unit: 'mg' | 'µg'
 }
 
-// PRD: "If you dose Xg now, effective dose ≈ Yg"
+// PRD: "If you dose X now, effective dose ≈ Y"
 // Only show when carryover > 15% (tier not CLEAR)
 // Show at Guided level only
 
@@ -33,10 +33,8 @@ export default function EffectiveDose({
   const effectiveAmount = amount * effectiveMultiplier
 
   const formatAmount = (val: number) => {
-    if (unit === 'g') {
-      return val.toFixed(2)
-    }
-    return val.toFixed(0)
+    const decimals = Number.isInteger(val) ? 0 : 2
+    return val.toFixed(decimals)
   }
 
   return (

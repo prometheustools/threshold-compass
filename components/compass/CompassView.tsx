@@ -2,16 +2,15 @@
 
 import { useMemo, useEffect, useState } from 'react'
 import Link from 'next/link'
-import type { Batch, CarryoverResult, ThresholdRange as ThresholdRangeModel, User } from '@/types'
+import { Compass, Activity } from 'lucide-react'
+import type { Batch, CarryoverResult, ThresholdRange as ThresholdRangeModel, User, DoseLog } from '@/types'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import LoadingState from '@/components/ui/LoadingState'
 import CarryoverBadge from '@/components/compass/CarryoverBadge'
 import ThresholdRange from '@/components/compass/ThresholdRange'
-import CompassVisualization from '@/components/compass/CompassVisualization'
+import DataDrivenCompass from '@/components/compass/DataDrivenCompass'
 import EffectiveDose from '@/components/compass/EffectiveDose'
-
-type CompassState = 'dormant' | 'calibrating' | 'calibrated_rest' | 'calibrated_active' | 'elevated_carryover'
 
 interface CompassViewProps {
   loading: boolean
@@ -22,6 +21,8 @@ interface CompassViewProps {
   carryover: CarryoverResult
   thresholdRange: ThresholdRangeModel | null
   discoveryDoseNumber: number | null
+  doseHistory: DoseLog[]
+  referenceTime: number
   onLogDose: () => void
   onSettle: () => void
   onResumeSetup?: () => void
@@ -38,6 +39,8 @@ export default function CompassView({
   carryover,
   thresholdRange,
   discoveryDoseNumber,
+  doseHistory,
+  referenceTime,
   onLogDose,
   onSettle,
   onResumeSetup,
@@ -47,9 +50,10 @@ export default function CompassView({
     if (previewMode) return false
     return !window.localStorage.getItem(FIRST_VISIT_KEY)
   })
-  const unit: 'g' | 'µg' = user?.substance_type === 'lsd' ? 'µg' : 'g'
+  const unit: 'mg' | 'µg' = activeBatch?.dose_unit === 'ug' ? 'µg' : 'mg'
   const isCalibrating = activeBatch?.calibration_status === 'calibrating'
   const isCalibrated = activeBatch?.calibration_status === 'calibrated'
+  const referenceDose = thresholdRange?.sweet_spot ?? (unit === 'µg' ? 10 : 100)
 
   useEffect(() => {
     if (showFirstVisit) {
@@ -57,67 +61,61 @@ export default function CompassView({
     }
   }, [showFirstVisit])
 
-  // Determine active dose hours (if user has dosed today)
-  const activeDoseHours = useMemo(() => {
-    // This would come from the most recent dose - placeholder for now
-    return null
-  }, [])
-
-  // Determine compass state per PRD Section 6.6
-  const compassState = useMemo((): CompassState => {
-    if (isCalibrating) return 'calibrating'
-    if (!isCalibrated && !isCalibrating) return 'dormant'
-    if (carryover.tier === 'elevated') return 'elevated_carryover'
-    if (activeDoseHours !== null && activeDoseHours < 8) return 'calibrated_active'
-    return 'calibrated_rest'
-  }, [isCalibrating, isCalibrated, carryover.tier, activeDoseHours])
+  // Check if user has any doses
+  const hasDoses = doseHistory.length > 0
 
   const calibrationPrompt = useMemo(() => {
     if (!activeBatch) {
       return {
         title: 'No Active Batch',
-        body: 'Choose a batch to wake the compass. Your first log becomes the baseline signal.',
-        ctaLabel: 'Activate Batch',
+        body: 'Choose a batch to activate your compass and start tracking.',
+        ctaLabel: 'Create Batch',
         ctaHref: '/batch',
+      }
+    }
+
+    if (!hasDoses) {
+      return {
+        title: 'Ready to Begin',
+        body: 'Your compass is calibrated and ready. Log your first dose to activate the data view.',
+        ctaLabel: 'Log First Dose',
+        ctaHref: '/log',
       }
     }
 
     if (activeBatch.calibration_status === 'uncalibrated') {
       return {
-        title: 'Pre-Calibration',
-        body: 'The instrument is ready. Log your first dose to begin mapping your threshold range.',
-        ctaLabel: 'Log First Signal',
-        ctaHref: '/log',
-      }
-    }
-
-    if (activeBatch.calibration_status === 'calibrating') {
-      const nextDose = discoveryDoseNumber ?? 1
-      return {
-        title: 'Discovery In Progress',
-        body: `Dose ${nextDose} of 10 is next. Consistent logging sharpens the range.`,
-        ctaLabel: `Log Dose ${nextDose}`,
+        title: 'Building Your Profile',
+        body: 'Log 10 doses to discover your personal threshold range. Each log improves accuracy.',
+        ctaLabel: 'Continue Logging',
         ctaHref: '/log',
       }
     }
 
     return null
-  }, [activeBatch, discoveryDoseNumber])
+  }, [activeBatch, hasDoses])
 
   return (
-    <div className="flex w-full flex-col gap-4 text-ivory animate-[fadeIn_800ms_ease-out]">
+    <div className="flex w-full flex-col gap-5 text-ivory animate-[fadeIn_800ms_ease-out]">
       {showFirstVisit && (
-        <Card className="border-orange/40 bg-orange/10 p-4 animate-[fadeInUp_800ms_ease-out]">
-          <p className="font-mono text-xs tracking-widest uppercase text-orange">An instrument for people who take this seriously.</p>
-          <p className="mt-2 text-sm text-bone">
-            This is not onboarding. This is initiation. The compass learns your threshold through your data.
-          </p>
+        <Card className="border-orange/40 bg-orange/10 p-5 animate-[fadeInUp_800ms_ease-out]">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-orange/20 flex items-center justify-center">
+              <Compass className="w-5 h-5 text-orange" />
+            </div>
+            <div>
+              <p className="font-mono text-xs tracking-widest uppercase text-orange">An instrument for people who take this seriously.</p>
+              <p className="mt-1 text-sm text-bone">
+                This is not onboarding. This is initiation. The compass learns your threshold through your data.
+              </p>
+            </div>
+          </div>
         </Card>
       )}
 
-      <div>
+      <div className="pb-2">
         <p className="font-mono text-xs tracking-widest uppercase text-bone">Compass Instrument</p>
-        <h1 className="mt-2 font-sans text-2xl text-ivory">Today&apos;s Readout</h1>
+        <h1 className="mt-1 font-sans text-2xl text-ivory">Today&apos;s Readout</h1>
       </div>
 
       {loading && (
@@ -165,18 +163,19 @@ export default function CompassView({
             </p>
           </Card>
 
-          <Card padding="lg" className="space-y-4">
-            <p className="font-mono text-xs tracking-widest uppercase text-bone">Live Needle</p>
-            <CompassVisualization
-              state={compassState}
-              northStar={user?.north_star ?? 'clarity'}
-              progress={discoveryDoseNumber ?? undefined}
+          <Card padding="lg" className="space-y-4 border-2 border-ember/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Activity className="w-4 h-4 text-orange" />
+              <p className="font-mono text-xs tracking-widest uppercase text-bone">Live Compass</p>
+            </div>
+            <DataDrivenCompass
+              doseHistory={doseHistory}
               thresholdRange={thresholdRange}
-              activeDoseHours={activeDoseHours}
-              carryoverTier={carryover.tier}
-              carryoverPercentage={carryover.percentage}
+              carryover={carryover}
               unit={unit}
-              calibrationStatus={activeBatch?.calibration_status}
+              isCalibrating={isCalibrating}
+              discoveryDoseNumber={discoveryDoseNumber}
+              referenceTime={referenceTime}
             />
           </Card>
 
@@ -201,7 +200,7 @@ export default function CompassView({
           {/* Effective Dose Calculator - show when carryover > 15% and calibrated */}
           {isCalibrated && carryover.percentage > 15 && (
             <EffectiveDose
-              amount={0.1}
+              amount={referenceDose}
               effectiveMultiplier={carryover.effective_multiplier}
               guidanceLevel={user?.guidance_level ?? 'guided'}
               unit={unit}

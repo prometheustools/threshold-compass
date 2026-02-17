@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import type { SubstanceType, BatchForm as BatchFormType, EstimatedPotency, DoseUnit, PsilocybinForm, LSDForm } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -124,10 +124,7 @@ export default function BatchForm({ initialData, onSubmit, onCancel, isSubmittin
     return newErrors
   }
 
-  const isValid = useMemo(() => {
-    const validationErrors = validate()
-    return Object.keys(validationErrors).length === 0
-  }, [name, substanceType, form, potency])
+  const isValid = Object.keys(validate()).length === 0
 
   const handleSubstanceChange = (value: string) => {
     setSubstanceType(value)

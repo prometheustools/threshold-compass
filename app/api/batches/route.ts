@@ -47,6 +47,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: deactivateError.message }, { status: 500 })
   }
 
+  const normalizedDoseUnit = dose_unit === 'ug' ? 'ug' : substance_type === 'lsd' ? 'ug' : 'mg'
+
   const { data, error } = await supabase
     .from('batches')
     .insert({
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
       substance_type,
       form,
       estimated_potency,
-      dose_unit: dose_unit === 'ug' ? 'ug' : 'mg',
+      dose_unit: normalizedDoseUnit,
       supplements: supplements ?? null,
       source_notes: source_notes ?? null,
       is_active: true,

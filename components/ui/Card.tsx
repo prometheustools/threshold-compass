@@ -8,6 +8,7 @@ interface CardProps {
   padding?: CardPadding
   className?: string
   children: ReactNode
+  hover?: boolean
 }
 
 const variantStyles: Record<CardVariant, string> = {
@@ -22,9 +23,21 @@ const paddingStyles: Record<CardPadding, string> = {
   lg: 'p-6',
 }
 
-export default function Card({ variant = 'surface', padding = 'md', className = '', children }: CardProps) {
+export default function Card({ 
+  variant = 'surface', 
+  padding = 'md', 
+  className = '', 
+  children,
+  hover = false
+}: CardProps) {
   return (
-    <div className={`rounded-card border border-ember/20 ${variantStyles[variant]} ${paddingStyles[padding]} ${className}`}>
+    <div className={`
+      rounded-card border border-ember/20 
+      ${variantStyles[variant]} 
+      ${paddingStyles[padding]} 
+      ${hover ? 'transition-all duration-300 hover:border-ember/40 hover:shadow-lg hover:shadow-black/20' : ''}
+      ${className}
+    `}>
       {children}
     </div>
   )

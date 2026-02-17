@@ -1,6 +1,6 @@
 'use client'
 
-import { Compass, FlaskConical, Layers, Pill } from 'lucide-react'
+import { Compass, FlaskConical, Layers, Pill, Sparkles, BookOpen } from 'lucide-react'
 import Button from './Button'
 import Card from './Card'
 
@@ -14,22 +14,47 @@ interface EmptyStateProps {
     onClick?: () => void
   }
   variant?: 'default' | 'subtle'
+  secondaryAction?: {
+    label: string
+    href?: string
+    onClick?: () => void
+  }
+  tip?: string
 }
 
-export function EmptyState({ icon, title, description, action, variant = 'default' }: EmptyStateProps) {
+export function EmptyState({ 
+  icon, 
+  title, 
+  description, 
+  action, 
+  variant = 'default',
+  secondaryAction,
+  tip
+}: EmptyStateProps) {
   const content = (
     <div className={`text-center ${variant === 'subtle' ? 'py-6' : 'py-12'}`}>
-      <div className={`mx-auto mb-4 flex items-center justify-center rounded-full bg-elevated ${variant === 'subtle' ? 'h-12 w-12' : 'h-16 w-16'}`}>
-        <div className="text-ash">{icon}</div>
+      <div className={`mx-auto mb-4 flex items-center justify-center rounded-2xl bg-elevated border border-ember/20 ${variant === 'subtle' ? 'h-12 w-12' : 'h-16 w-16'}`}>
+        <div className="text-orange">{icon}</div>
       </div>
-      <h3 className={`font-sans text-ivory ${variant === 'subtle' ? 'text-base' : 'text-lg'}`}>
+      <h3 className={`font-sans font-semibold text-ivory ${variant === 'subtle' ? 'text-base' : 'text-lg'}`}>
         {title}
       </h3>
-      <p className={`mt-2 text-bone ${variant === 'subtle' ? 'text-xs' : 'text-sm'}`}>
+      <p className={`mt-2 text-bone ${variant === 'subtle' ? 'text-xs' : 'text-sm'} max-w-xs mx-auto`}>
         {description}
       </p>
+      
+      {/* Pro Tip */}
+      {tip && (
+        <div className="mt-4 p-3 rounded-button bg-orange/5 border border-orange/20 mx-auto max-w-xs">
+          <div className="flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-orange flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-bone text-left">{tip}</p>
+          </div>
+        </div>
+      )}
+      
       {action && (
-        <div className="mt-6">
+        <div className="mt-6 space-y-3">
           {action.href ? (
             <a href={action.href}>
               <Button size={variant === 'subtle' ? 'md' : 'lg'} className="w-full">
@@ -40,6 +65,26 @@ export function EmptyState({ icon, title, description, action, variant = 'defaul
             <Button size={variant === 'subtle' ? 'md' : 'lg'} className="w-full" onClick={action.onClick}>
               {action.label}
             </Button>
+          )}
+          
+          {secondaryAction && (
+            secondaryAction.href ? (
+              <a 
+                href={secondaryAction.href}
+                className="inline-flex items-center justify-center gap-2 text-sm text-bone hover:text-ivory transition-colors min-h-[44px]"
+              >
+                <BookOpen className="w-4 h-4" />
+                {secondaryAction.label}
+              </a>
+            ) : (
+              <button
+                onClick={secondaryAction.onClick}
+                className="inline-flex items-center justify-center gap-2 text-sm text-bone hover:text-ivory transition-colors min-h-[44px]"
+              >
+                <BookOpen className="w-4 h-4" />
+                {secondaryAction.label}
+              </button>
+            )
           )}
         </div>
       )}
@@ -60,6 +105,7 @@ export function EmptyStateNoBatch() {
       icon={<Layers size={24} />}
       title="No Active Batch"
       description="Create a batch to start tracking your doses. Each batch represents a specific substance source."
+      tip="Batches help you track potency variations between different sources over time."
       action={{
         label: 'Create Batch',
         href: '/batch',
@@ -74,6 +120,7 @@ export function EmptyStateNoDoses() {
       icon={<Pill size={24} />}
       title="No Doses Logged"
       description="Start logging your doses to build your personal threshold profile and track carryover."
+      tip="Log immediately after dosing while context is fresh. You can always add details later."
       action={{
         label: 'Log First Dose',
         href: '/log',

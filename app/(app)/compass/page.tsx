@@ -59,9 +59,9 @@ const PREVIEW_RANGE: ThresholdRange = {
   id: 'preview-range',
   user_id: 'preview-user',
   batch_id: 'preview-batch',
-  floor_dose: 0.08,
-  sweet_spot: 0.14,
-  ceiling_dose: 0.2,
+  floor_dose: 80,
+  sweet_spot: 140,
+  ceiling_dose: 200,
   confidence: 72,
   qualifier: 'Preview estimate only',
   doses_used: 8,
@@ -75,6 +75,73 @@ const PREVIEW_CARRYOVER: CarryoverResult = {
   hours_to_clear: 18,
   message: 'Mild carryover expected from recent dosing.',
 }
+
+const PREVIEW_DOSE_HISTORY: DoseLog[] = [
+  {
+    id: 'preview-1',
+    user_id: 'preview-user',
+    batch_id: 'preview-batch',
+    amount: 140,
+    unit: 'mg',
+    dosed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    preparation: 'empty_stomach',
+    sleep_quality: 'good',
+    energy_level: 'medium',
+    stress_level: 'low',
+    cycle_day: null,
+    notes: null,
+    discovery_dose_number: 8,
+    phase: 'context',
+    dose_number: 8,
+    pre_dose_mood: 4,
+    intention: 'Focus work session',
+    post_dose_completed: true,
+    post_dose_mood: 5,
+    signal_score: 8,
+    texture_score: 6,
+    interference_score: 2,
+    threshold_feel: 'sweetspot',
+    day_classification: 'green',
+    context_tags: ['work'],
+    timing_tag: 'morning',
+    carryover_score: null,
+    effective_dose: null,
+    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'preview-2',
+    user_id: 'preview-user',
+    batch_id: 'preview-batch',
+    amount: 120,
+    unit: 'mg',
+    dosed_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    preparation: 'light_meal',
+    sleep_quality: 'fair',
+    energy_level: 'low',
+    stress_level: 'medium',
+    cycle_day: null,
+    notes: null,
+    discovery_dose_number: 7,
+    phase: 'context',
+    dose_number: 7,
+    pre_dose_mood: 3,
+    intention: 'Creative exploration',
+    post_dose_completed: true,
+    post_dose_mood: 4,
+    signal_score: 6,
+    texture_score: 7,
+    interference_score: 3,
+    threshold_feel: 'under',
+    day_classification: 'yellow',
+    context_tags: ['creative'],
+    timing_tag: 'afternoon',
+    carryover_score: null,
+    effective_dose: null,
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+]
 
 function getErrorMessage(error: unknown): string {
   if (isSchemaCacheTableMissingError(error)) {
@@ -91,6 +158,10 @@ function getErrorMessage(error: unknown): string {
   return 'Unable to load Compass data right now.'
 }
 
+function formatUnitLabel(unit: string): string {
+  return unit === 'ug' ? 'µg' : unit
+}
+
 export default function CompassPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -101,6 +172,7 @@ export default function CompassPage() {
   const [thresholdRange, setThresholdRangeState] = useState<ThresholdRange | null>(null)
   const [discoveryDoseNumber, setDiscoveryDoseNumber] = useState<number | null>(null)
   const [previewMode, setPreviewMode] = useState(false)
+  const [doseHistory, setDoseHistory] = useState<DoseLog[]>([])
 
   // Quick Log states
   const [lastDose, setLastDose] = useState<DoseLog | null>(null)
@@ -209,6 +281,7 @@ export default function CompassPage() {
           setCarryoverState(PREVIEW_CARRYOVER)
           setThresholdRangeState(PREVIEW_RANGE)
           setDiscoveryDoseNumber(null)
+          setDoseHistory(PREVIEW_DOSE_HISTORY)
 
           setUser(PREVIEW_USER)
           setActiveBatch(PREVIEW_BATCH)
@@ -278,6 +351,21 @@ export default function CompassPage() {
         const typedBatch = (batchRows?.[0] as Batch | undefined) ?? null
         const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
 
+        // Fetch full dose history for the compass visualization
+        const { data: fullDoseRows, error: fullDoseError } = await supabase
+          .from('dose_logs')
+          .select('*')
+          .eq('user_id', anonUserId)
+          .order('dosed_at', { ascending: false })
+
+        if (fullDoseError) {
+          throw fullDoseError
+        }
+
+        const typedFullDoses = (fullDoseRows ?? []) as DoseLog[]
+        setDoseHistory(typedFullDoses)
+
+        // Fetch 14-day dose history for carryover calculation
         const { data: doseRows, error: doseError } = await supabase
           .from('dose_logs')
           .select('amount,dosed_at')
@@ -402,7 +490,7 @@ export default function CompassPage() {
       const data = await response.json()
       setLastLoggedDoseId(data.id)
       setConfirmationTone('success')
-      setConfirmationMessage(`Dose logged at ${lastDose.amount}${lastDose.unit}. Your compass will refresh shortly.`)
+      setConfirmationMessage(`Dose logged at ${lastDose.amount}${formatUnitLabel(lastDose.unit)}. Your compass will refresh shortly.`)
     } catch {
       setConfirmationTone('error')
       setConfirmationMessage('Could not log that dose. Try again in a moment.')
@@ -437,8 +525,8 @@ export default function CompassPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base px-4 py-8 text-ivory">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-xl flex-col gap-4">
+    <div className="min-h-screen bg-base px-4 py-6 text-ivory">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-xl flex-col gap-5">
         <CompassView
           loading={loading}
           error={error}
@@ -448,6 +536,8 @@ export default function CompassPage() {
           carryover={carryover}
           thresholdRange={thresholdRange}
           discoveryDoseNumber={discoveryDoseNumber}
+          doseHistory={doseHistory}
+          referenceTime={Date.now()}
           onLogDose={() => router.push('/log')}
           onSettle={() => router.push('/settle')}
           onResumeSetup={() => {
@@ -556,9 +646,9 @@ export default function CompassPage() {
                 onClick={handleQuickLog}
                 loading={quickLogLoading}
                 disabled={quickLogLoading}
-                aria-label={`Quick log last dose of ${lastDose.amount}${lastDose.unit}`}
+                aria-label={`Quick log last dose of ${lastDose.amount}${formatUnitLabel(lastDose.unit)}`}
               >
-                Log Same ({lastDose.amount}{lastDose.unit})
+                Log Same ({lastDose.amount}{formatUnitLabel(lastDose.unit)})
               </Button>
             ) : (
               <Link

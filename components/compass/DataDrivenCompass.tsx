@@ -4,12 +4,10 @@ import { useMemo } from 'react'
 import { 
   Activity, 
   AlertTriangle, 
-  CheckCircle2, 
   Clock, 
   TrendingUp,
   Zap,
-  Target,
-  Calendar
+  Target
 } from 'lucide-react'
 import type { 
   DoseLog, 
@@ -25,40 +23,38 @@ interface DataDrivenCompassProps {
   unit: 'mg' | 'µg'
   isCalibrating: boolean
   discoveryDoseNumber: number | null
-  referenceTime: number // Pass Date.now() from parent client component
+  referenceTime: number
 }
 
-// Get color based on threshold feel
+// Get feel color
 function getFeelColor(feel: ThresholdFeel | null): string {
   switch (feel) {
-    case 'sweetspot': return '#4A9B6B' // status-clear (green)
-    case 'under': return '#C9A227' // status-mild (amber)
-    case 'over': return '#B54A4A' // status-elevated (red)
-    case 'nothing': return '#8A8A8A' // ash (gray)
+    case 'sweetspot': return '#4A9B6B'
+    case 'under': return '#C9A227'
+    case 'over': return '#B54A4A'
     default: return '#8A8A8A'
   }
 }
 
-// Get feel label
+// Get feel label (shortened)
 function getFeelLabel(feel: ThresholdFeel | null): string {
   switch (feel) {
     case 'sweetspot': return 'Sweet Spot'
     case 'under': return 'Under'
     case 'over': return 'Over'
-    case 'nothing': return 'No Effect'
-    default: return 'Unknown'
+    case 'nothing': return 'None'
+    default: return '—'
   }
 }
 
-// Calculate days since last dose (given reference time)
-function getDaysSince(dosedAt: string, referenceTime: number): number {
-  const hours = (referenceTime - new Date(dosedAt).getTime()) / (1000 * 60 * 60)
-  return Math.floor(hours / 24)
-}
-
-// Calculate hours since last dose (given reference time)
-function getHoursSince(dosedAt: string, referenceTime: number): number {
-  return Math.floor((referenceTime - new Date(dosedAt).getTime()) / (1000 * 60 * 60))
+// Format time ago
+function formatTimeAgo(dosedAt: string, referenceTime: number): string {
+  const hours = Math.floor((referenceTime - new Date(dosedAt).getTime()) / (1000 * 60 * 60))
+  if (hours < 1) return 'Just now'
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'Yesterday'
+  return `${days}d ago`
 }
 
 export default function DataDrivenCompass({
@@ -70,7 +66,6 @@ export default function DataDrivenCompass({
   discoveryDoseNumber,
   referenceTime,
 }: DataDrivenCompassProps) {
-  // Get recent doses (last 14 days)
   const recentDoses = useMemo(() => {
     const cutoff = new Date(referenceTime - 14 * 24 * 60 * 60 * 1000)
     return doseHistory
@@ -78,289 +73,243 @@ export default function DataDrivenCompass({
       .sort((a, b) => new Date(b.dosed_at).getTime() - new Date(a.dosed_at).getTime())
   }, [doseHistory, referenceTime])
 
-  // Get last dose
   const lastDose = recentDoses[0] || null
+  const sweetSpotCount = recentDoses.filter(d => d.threshold_feel === 'sweetspot').length
 
-  // Calculate next recommended dose
+  // Recommendation
   const recommendation = useMemo(() => {
     if (!thresholdRange?.sweet_spot) return null
-
     const baseDose = thresholdRange.sweet_spot
     const adjustedDose = baseDose * carryover.effective_multiplier
-
-    // Round to reasonable precision
     const precision = unit === 'µg' ? 1 : 5
     const roundedDose = Math.round(adjustedDose / precision) * precision
-
-    // Determine confidence
-    let confidence: 'high' | 'medium' | 'low' = 'medium'
-    if (thresholdRange.confidence >= 70 && carryover.percentage <= 15) {
-      confidence = 'high'
-    } else if (thresholdRange.confidence < 40 || carryover.percentage > 40) {
-      confidence = 'low'
-    }
-
+    
     return {
-      baseDose,
-      adjustedDose: roundedDose,
-      confidence,
-      reason: carryover.percentage > 15 
-        ? `Adjusted for ${carryover.percentage}% carryover`
-        : 'Full sensitivity window'
+      dose: roundedDose,
+      original: baseDose,
+      adjusted: roundedDose !== baseDose,
+      confidence: thresholdRange.confidence >= 70 ? 'high' : thresholdRange.confidence >= 40 ? 'medium' : 'low'
     }
   }, [thresholdRange, carryover, unit])
 
-  // Analyze pattern
+  // Pattern detection
   const pattern = useMemo(() => {
-    if (recentDoses.length < 3) return null
-
-    const feels = recentDoses.slice(0, 5).map(d => d.threshold_feel).filter(Boolean)
-    const sweetSpots = feels.filter(f => f === 'sweetspot').length
-    const overs = feels.filter(f => f === 'over').length
-    const unders = feels.filter(f => f === 'under').length
-
-    if (overs >= 2) {
-      return { type: 'caution', message: 'Recent doses trending high', icon: AlertTriangle }
-    }
-    if (sweetSpots >= 2) {
-      return { type: 'good', message: 'Consistent sweet spots', icon: CheckCircle2 }
-    }
-    if (unders >= 2) {
-      return { type: 'info', message: 'Consider slightly higher dose', icon: TrendingUp }
-    }
+    if (recentDoses.length < 2) return null
+    const recent = recentDoses.slice(0, 4).map(d => d.threshold_feel)
+    const overs = recent.filter(f => f === 'over').length
+    const unders = recent.filter(f => f === 'under').length
+    
+    if (overs >= 2) return { type: 'caution', text: 'Recent doses trending high' }
+    if (unders >= 2) return { type: 'tip', text: 'Consider slightly higher dose' }
     return null
   }, [recentDoses])
 
-  // Calculate timeline for visualization
-  const timelineData = useMemo(() => {
-    const days = 14
-    const data = []
-    const refDate = new Date(referenceTime)
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(refDate.getTime() - i * 24 * 60 * 60 * 1000)
-      const dateStr = date.toISOString().split('T')[0]
-      
-      const dosesOnDay = recentDoses.filter(d => 
-        d.dosed_at.startsWith(dateStr)
-      )
-      
-      data.push({
-        day: i,
-        date: dateStr,
-        doses: dosesOnDay,
-        hasDose: dosesOnDay.length > 0,
-      })
-    }
-    
-    return data
-  }, [recentDoses, referenceTime])
-
-  // Render empty state
-  if (doseHistory.length === 0) {
+  // Empty state
+  if (!lastDose) {
     return (
-      <div className="rounded-card border border-ember/30 bg-surface p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-elevated flex items-center justify-center mx-auto mb-4">
-          <Activity className="w-8 h-8 text-ash" />
+      <div className="text-center py-12">
+        <div className="w-20 h-20 rounded-full bg-elevated/50 flex items-center justify-center mx-auto mb-6">
+          <Activity className="w-10 h-10 text-ash" />
         </div>
-        <h3 className="font-sans text-lg text-ivory mb-2">No Data Yet</h3>
-        <p className="text-sm text-bone mb-4">
-          Log your first dose to activate the compass. Your threshold range will emerge from your data.
+        <h3 className="text-xl font-semibold text-ivory mb-2">Start Your Journey</h3>
+        <p className="text-bone mb-6 max-w-xs mx-auto">
+          Log your first dose to activate your personal compass
         </p>
         <div className="flex items-center justify-center gap-2 text-xs text-ash">
-          <Calendar className="w-4 h-4" />
-          <span>10 doses needed for calibration</span>
+          <span className="w-2 h-2 rounded-full bg-orange" />
+          <span>10 doses to calibrate your threshold</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5">
-      {/* Main Status Card */}
-      <div className="rounded-card border border-ember/30 bg-surface p-5">
-        {/* Header with last dose info */}
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <p className="font-mono text-xs tracking-widest uppercase text-bone mb-1">
-              Last Dose
-            </p>
-            {lastDose ? (
+    <div className="space-y-6">
+      {/* Main Status - Hero Card */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface to-elevated p-6">
+        {/* Background accent */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+        
+        <div className="relative">
+          {/* Top row: Last dose */}
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="text-xs text-ash uppercase tracking-wider mb-1">Last Dose</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-ivory">
+                <span className="text-4xl font-bold text-ivory tracking-tight">
                   {lastDose.amount}
                 </span>
-                <span className="text-lg text-bone">{unit}</span>
+                <span className="text-xl text-bone">{unit}</span>
               </div>
-            ) : (
-              <span className="text-lg text-ash">No recent doses</span>
-            )}
-          </div>
-          
-          {lastDose && (
+            </div>
+            
             <div className="text-right">
-              <div className="flex items-center gap-1.5 text-bone">
+              <div className="flex items-center gap-1.5 text-bone mb-1">
                 <Clock className="w-4 h-4" />
                 <span className="text-sm">
-                  {getDaysSince(lastDose.dosed_at, referenceTime) === 0 
-                    ? `${getHoursSince(lastDose.dosed_at, referenceTime)}h ago`
-                    : `${getDaysSince(lastDose.dosed_at, referenceTime)}d ago`
-                  }
+                  {formatTimeAgo(lastDose.dosed_at, referenceTime)}
                 </span>
               </div>
               {lastDose.threshold_feel && (
-                <div 
-                  className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
+                <span 
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                   style={{ 
-                    backgroundColor: `${getFeelColor(lastDose.threshold_feel)}20`,
+                    backgroundColor: `${getFeelColor(lastDose.threshold_feel)}15`,
                     color: getFeelColor(lastDose.threshold_feel)
                   }}
                 >
                   {getFeelLabel(lastDose.threshold_feel)}
-                </div>
+                </span>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Carryover Status */}
-        <div className="mb-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-xs tracking-widest uppercase text-bone">
-              System Status
-            </span>
-            <span className={`text-xs font-medium ${
-              carryover.tier === 'clear' ? 'text-status-clear' :
-              carryover.tier === 'mild' ? 'text-status-mild' :
-              carryover.tier === 'moderate' ? 'text-orange' :
-              'text-status-elevated'
-            }`}>
-              {carryover.tier === 'clear' ? 'Clear' :
-               carryover.tier === 'mild' ? 'Mild Carryover' :
-               carryover.tier === 'moderate' ? 'Moderate' :
-               'Elevated'} — {carryover.percentage}%
-            </span>
           </div>
-          
-          {/* Carryover Bar */}
-          <div className="h-2 bg-elevated rounded-full overflow-hidden">
-            <div 
-              className={`h-full rounded-full transition-all duration-1000 ${
-                carryover.tier === 'clear' ? 'bg-status-clear' :
-                carryover.tier === 'mild' ? 'bg-status-mild' :
-                carryover.tier === 'moderate' ? 'bg-orange' :
-                'bg-status-elevated'
-              }`}
-              style={{ width: `${Math.min(carryover.percentage, 100)}%` }}
-            />
-          </div>
-          
-          {carryover.hours_to_clear && (
-            <p className="mt-2 text-xs text-ash">
-              Full sensitivity in ~{Math.ceil(carryover.hours_to_clear / 24)} days
-            </p>
-          )}
-        </div>
 
-        {/* Timeline Visualization */}
-        <div>
-          <p className="font-mono text-xs tracking-widest uppercase text-bone mb-3">
-            14-Day Timeline
-          </p>
-          <div className="flex gap-1">
-            {timelineData.map((day, idx) => (
+          {/* Carryover Status */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-ash uppercase tracking-wider">System Clearance</span>
+              <span className={`text-sm font-medium ${
+                carryover.tier === 'clear' ? 'text-status-clear' :
+                carryover.tier === 'mild' ? 'text-status-mild' :
+                carryover.tier === 'moderate' ? 'text-orange' :
+                'text-status-elevated'
+              }`}>
+                {carryover.percentage}%
+              </span>
+            </div>
+            <div className="h-1.5 bg-base rounded-full overflow-hidden">
               <div 
-                key={day.date}
-                className="flex-1 flex flex-col items-center gap-1"
-              >
-                <div 
-                  className={`w-full aspect-square rounded-sm transition-all ${
-                    day.hasDose 
-                      ? 'bg-orange' 
-                      : idx >= timelineData.length - 3 
-                        ? 'bg-elevated/50' 
-                        : 'bg-elevated/30'
-                  }`}
-                  style={{
-                    opacity: day.hasDose ? 1 : 0.5,
-                  }}
-                  title={day.hasDose 
-                    ? `${day.doses.length} dose(s) on ${day.date}`
-                    : day.date
-                  }
-                />
-                {idx % 3 === 0 && (
-                  <span className="text-[8px] text-ash">
-                    {new Date(day.date).getDate()}
-                  </span>
-                )}
-              </div>
-            ))}
+                className={`h-full rounded-full transition-all duration-700 ${
+                  carryover.tier === 'clear' ? 'bg-status-clear' :
+                  carryover.tier === 'mild' ? 'bg-status-mild' :
+                  carryover.tier === 'moderate' ? 'bg-orange' :
+                  'bg-status-elevated'
+                }`}
+                style={{ width: `${Math.min(carryover.percentage, 100)}%` }}
+              />
+            </div>
+            {carryover.hours_to_clear ? (
+              <p className="mt-2 text-xs text-ash">
+                Full sensitivity in {Math.ceil(carryover.hours_to_clear / 24)} days
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-status-clear">
+                System clear — optimal dosing window
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Threshold Range Visualization (when calibrated) */}
-      {thresholdRange?.sweet_spot && (
-        <div className="rounded-card border border-ember/30 bg-surface p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-mono text-xs tracking-widest uppercase text-bone">
-              Your Threshold Range
-            </p>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              thresholdRange.confidence >= 70 
+      {/* Quick Stats Row */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-ivory">{doseHistory.length}</p>
+          <p className="text-xs text-ash uppercase tracking-wider mt-0.5">Total</p>
+        </div>
+        <div className="text-center border-x border-ember/10">
+          <p className="text-2xl font-bold text-ivory">{recentDoses.length}</p>
+          <p className="text-xs text-ash uppercase tracking-wider mt-0.5">14 Days</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-orange">{sweetSpotCount}</p>
+          <p className="text-xs text-ash uppercase tracking-wider mt-0.5">Sweet Spots</p>
+        </div>
+      </div>
+
+      {/* Recommendation - Primary Action */}
+      {recommendation && (
+        <div className="rounded-2xl bg-orange/10 border border-orange/20 p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-orange/20 flex items-center justify-center">
+              <Target className="w-5 h-5 text-orange" />
+            </div>
+            <div>
+              <p className="text-xs text-orange uppercase tracking-wider">Recommended</p>
+              <p className="text-xs text-ash">Next dose based on your data</p>
+            </div>
+          </div>
+          
+          <div className="flex items-baseline gap-3 mb-3">
+            <span className="text-5xl font-bold text-ivory tracking-tight">
+              {recommendation.dose}
+            </span>
+            <span className="text-xl text-bone">{unit}</span>
+            {recommendation.adjusted && (
+              <span className="text-sm text-ash line-through">
+                {recommendation.original}{unit}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              recommendation.confidence === 'high' 
                 ? 'bg-status-clear/20 text-status-clear' :
-              thresholdRange.confidence >= 40
+              recommendation.confidence === 'medium'
                 ? 'bg-status-mild/20 text-status-mild'
-                : 'bg-status-elevated/20 text-status-elevated'
+                : 'bg-ash/20 text-ash'
+            }`}>
+              {recommendation.confidence} confidence
+            </span>
+            
+            {pattern && (
+              <span className={`text-xs flex items-center gap-1 ${
+                pattern.type === 'caution' ? 'text-status-elevated' : 'text-status-mild'
+              }`}>
+                {pattern.type === 'caution' ? <AlertTriangle className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                {pattern.text}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Threshold Range - Visual */}
+      {thresholdRange?.sweet_spot && (
+        <div className="rounded-2xl bg-surface p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-ash uppercase tracking-wider">Your Range</p>
+            <span className={`text-xs ${
+              thresholdRange.confidence >= 70 ? 'text-status-clear' :
+              thresholdRange.confidence >= 40 ? 'text-status-mild' :
+              'text-ash'
             }`}>
               {thresholdRange.confidence}% confidence
             </span>
           </div>
 
-          {/* Range Bar */}
-          <div className="relative h-12 bg-elevated rounded-lg mb-4 overflow-hidden">
-            {/* Floor marker */}
+          {/* Visual Range Bar */}
+          <div className="relative h-16 bg-elevated rounded-xl mb-4">
+            {/* Zone markers */}
             {thresholdRange.floor_dose && (
-              <div 
-                className="absolute top-0 bottom-0 w-0.5 bg-status-clear"
-                style={{ left: '10%' }}
-              >
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-status-clear whitespace-nowrap">
-                  Floor {thresholdRange.floor_dose}{unit}
-                </span>
+              <div className="absolute left-[10%] top-0 bottom-0 flex flex-col justify-end pb-2">
+                <span className="text-[10px] text-ash">{thresholdRange.floor_dose}</span>
+                <span className="text-[8px] text-ash/60 uppercase">Floor</span>
               </div>
             )}
             
             {/* Sweet spot zone */}
             {thresholdRange.sweet_spot && (
               <div 
-                className="absolute top-0 bottom-0 bg-orange/20 border-x-2 border-orange"
-                style={{ 
-                  left: '40%', 
-                  width: '20%',
-                }}
+                className="absolute top-2 bottom-2 bg-orange/20 rounded-lg border border-orange/30"
+                style={{ left: '35%', width: '30%' }}
               >
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-orange font-medium whitespace-nowrap">
-                  Sweet Spot {thresholdRange.sweet_spot}{unit}
-                </span>
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-center">
+                  <span className="text-xs font-medium text-orange">{thresholdRange.sweet_spot}{unit}</span>
+                </div>
               </div>
             )}
             
-            {/* Ceiling marker */}
             {thresholdRange.ceiling_dose && (
-              <div 
-                className="absolute top-0 bottom-0 w-0.5 bg-status-elevated"
-                style={{ left: '90%' }}
-              >
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-status-elevated whitespace-nowrap">
-                  Ceiling {thresholdRange.ceiling_dose}{unit}
-                </span>
+              <div className="absolute right-[10%] top-0 bottom-0 flex flex-col justify-end pb-2 text-right">
+                <span className="text-[10px] text-ash">{thresholdRange.ceiling_dose}</span>
+                <span className="text-[8px] text-ash/60 uppercase">Ceiling</span>
               </div>
             )}
 
-            {/* Recent doses plotted */}
-            {recentDoses.slice(0, 5).map((dose, idx) => {
+            {/* Recent doses as dots */}
+            {recentDoses.slice(0, 4).map((dose, idx) => {
               if (!thresholdRange.floor_dose || !thresholdRange.ceiling_dose) return null
               const range = thresholdRange.ceiling_dose - thresholdRange.floor_dose
               const normalizedPos = (dose.amount - thresholdRange.floor_dose) / range
@@ -369,135 +318,87 @@ export default function DataDrivenCompass({
               return (
                 <div
                   key={dose.id}
-                  className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-surface"
+                  className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-surface shadow-lg"
                   style={{ 
                     left: `${position}%`,
                     backgroundColor: getFeelColor(dose.threshold_feel),
-                    zIndex: 5 - idx,
+                    zIndex: 10 - idx,
                   }}
-                  title={`${dose.amount}${unit} - ${getFeelLabel(dose.threshold_feel)}`}
+                  title={`${dose.amount}${unit}`}
                 />
               )
             })}
           </div>
 
-          {/* Pattern Alert */}
-          {pattern && (
-            <div className={`flex items-center gap-2 p-3 rounded-lg ${
-              pattern.type === 'caution' ? 'bg-status-elevated/10 border border-status-elevated/30' :
-              pattern.type === 'good' ? 'bg-status-clear/10 border border-status-clear/30' :
-              'bg-status-mild/10 border border-status-mild/30'
-            }`}>
-              <pattern.icon className={`w-4 h-4 ${
-                pattern.type === 'caution' ? 'text-status-elevated' :
-                pattern.type === 'good' ? 'text-status-clear' :
-                'text-status-mild'
-              }`} />
-              <span className="text-sm">{pattern.message}</span>
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-6 text-[10px] text-ash">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-status-clear" />
+              <span>Sweet Spot</span>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Recommendation Card */}
-      {recommendation && (
-        <div className="rounded-card border-2 border-orange/40 bg-orange/5 p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-orange/20 flex items-center justify-center">
-              <Target className="w-5 h-5 text-orange" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-status-mild" />
+              <span>Under</span>
             </div>
-            <div className="flex-1">
-              <p className="font-mono text-xs tracking-widest uppercase text-orange mb-1">
-                Recommended Next Dose
-              </p>
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-3xl font-bold text-ivory">
-                  {recommendation.adjustedDose}
-                </span>
-                <span className="text-lg text-bone">{unit}</span>
-                {recommendation.adjustedDose !== recommendation.baseDose && (
-                  <span className="text-sm text-ash line-through">
-                    {recommendation.baseDose}{unit}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-bone">
-                {recommendation.reason}
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                  recommendation.confidence === 'high' 
-                    ? 'bg-status-clear/20 text-status-clear' :
-                  recommendation.confidence === 'medium'
-                    ? 'bg-status-mild/20 text-status-mild'
-                    : 'bg-status-elevated/20 text-status-elevated'
-                }`}>
-                  {recommendation.confidence === 'high' && <CheckCircle2 className="w-3 h-3" />}
-                  {recommendation.confidence === 'medium' && <Activity className="w-3 h-3" />}
-                  {recommendation.confidence === 'low' && <AlertTriangle className="w-3 h-3" />}
-                  {recommendation.confidence} confidence
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-status-elevated" />
+              <span>Over</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Calibrating State */}
+      {/* Discovery Progress */}
       {isCalibrating && discoveryDoseNumber && (
-        <div className="rounded-card border border-status-mild/30 bg-status-mild/5 p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-status-mild/20 flex items-center justify-center">
+        <div className="rounded-2xl bg-elevated/50 p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-status-mild/20 flex items-center justify-center">
               <Zap className="w-5 h-5 text-status-mild" />
             </div>
             <div>
-              <p className="font-mono text-xs tracking-widest uppercase text-status-mild mb-1">
-                Discovery Protocol
-              </p>
-              <p className="text-lg font-semibold text-ivory mb-1">
-                Dose {discoveryDoseNumber} of 10
-              </p>
-              <p className="text-sm text-bone">
-                Consistent logging sharpens your threshold range. Log effects 4-6 hours post-dose.
-              </p>
-              
-              {/* Progress dots */}
-              <div className="mt-3 flex gap-1">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1.5 flex-1 rounded-full transition-all ${
-                      i < (discoveryDoseNumber - 1) 
-                        ? 'bg-status-mild' 
-                        : i === discoveryDoseNumber - 1
-                          ? 'bg-status-mild animate-pulse'
-                          : 'bg-elevated'
-                    }`}
-                  />
-                ))}
-              </div>
+              <p className="text-xs text-ash uppercase tracking-wider">Discovery Protocol</p>
+              <p className="text-lg font-semibold text-ivory">Dose {discoveryDoseNumber} of 10</p>
             </div>
           </div>
+          
+          {/* Progress bar */}
+          <div className="h-2 bg-base rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-status-mild rounded-full transition-all duration-500"
+              style={{ width: `${(discoveryDoseNumber / 10) * 100}%` }}
+            />
+          </div>
+          <p className="mt-3 text-xs text-ash">
+            Log effects 4-6 hours post-dose for accurate calibration
+          </p>
         </div>
       )}
 
-      {/* Dose Count Summary */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-card border border-ember/20 bg-surface p-3 text-center">
-          <p className="font-mono text-2xl font-bold text-ivory">{doseHistory.length}</p>
-          <p className="text-[10px] text-ash uppercase tracking-wider">Total Doses</p>
+      {/* Recent Activity Preview */}
+      {recentDoses.length > 1 && (
+        <div>
+          <p className="text-xs text-ash uppercase tracking-wider mb-3">Recent Activity</p>
+          <div className="space-y-2">
+            {recentDoses.slice(1, 4).map((dose) => (
+              <div 
+                key={dose.id} 
+                className="flex items-center justify-between py-2 border-b border-ember/10 last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: getFeelColor(dose.threshold_feel) }}
+                  />
+                  <span className="text-sm text-ivory">{dose.amount}{unit}</span>
+                </div>
+                <span className="text-xs text-ash">
+                  {formatTimeAgo(dose.dosed_at, referenceTime)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="rounded-card border border-ember/20 bg-surface p-3 text-center">
-          <p className="font-mono text-2xl font-bold text-ivory">{recentDoses.length}</p>
-          <p className="text-[10px] text-ash uppercase tracking-wider">Last 14 Days</p>
-        </div>
-        <div className="rounded-card border border-ember/20 bg-surface p-3 text-center">
-          <p className="font-mono text-2xl font-bold text-orange">
-            {recentDoses.filter(d => d.threshold_feel === 'sweetspot').length}
-          </p>
-          <p className="text-[10px] text-ash uppercase tracking-wider">Sweet Spots</p>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

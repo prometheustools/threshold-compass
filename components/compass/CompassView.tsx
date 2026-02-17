@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Compass, Activity } from 'lucide-react'
+import { Compass } from 'lucide-react'
 import type { Batch, CarryoverResult, ThresholdRange as ThresholdRangeModel, User, DoseLog } from '@/types'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -163,21 +163,15 @@ export default function CompassView({
             </p>
           </Card>
 
-          <Card padding="lg" className="space-y-4 border-2 border-ember/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-4 h-4 text-orange" />
-              <p className="font-mono text-xs tracking-widest uppercase text-bone">Live Compass</p>
-            </div>
-            <DataDrivenCompass
-              doseHistory={doseHistory}
-              thresholdRange={thresholdRange}
-              carryover={carryover}
-              unit={unit}
-              isCalibrating={isCalibrating}
-              discoveryDoseNumber={discoveryDoseNumber}
-              referenceTime={referenceTime}
-            />
-          </Card>
+          <DataDrivenCompass
+            doseHistory={doseHistory}
+            thresholdRange={thresholdRange}
+            carryover={carryover}
+            unit={unit}
+            isCalibrating={isCalibrating}
+            discoveryDoseNumber={discoveryDoseNumber}
+            referenceTime={referenceTime}
+          />
 
           {calibrationPrompt && (
             <Card className="border-ember/40 bg-elevated/70 p-4">

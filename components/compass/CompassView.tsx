@@ -9,7 +9,7 @@ import Card from '@/components/ui/Card'
 import LoadingState from '@/components/ui/LoadingState'
 import CarryoverBadge from '@/components/compass/CarryoverBadge'
 import ThresholdRange from '@/components/compass/ThresholdRange'
-import DataDrivenCompass from '@/components/compass/DataDrivenCompass'
+import CompassRedesigned from '@/components/compass/CompassRedesigned'
 import EffectiveDose from '@/components/compass/EffectiveDose'
 
 interface CompassViewProps {
@@ -163,15 +163,17 @@ export default function CompassView({
             </p>
           </Card>
 
-          <DataDrivenCompass
-            doseHistory={doseHistory}
-            thresholdRange={thresholdRange}
-            carryover={carryover}
-            unit={unit}
-            isCalibrating={isCalibrating}
-            discoveryDoseNumber={discoveryDoseNumber}
-            referenceTime={referenceTime}
-          />
+            <CompassRedesigned
+              doseHistory={doseHistory}
+              thresholdRange={thresholdRange}
+              carryover={carryover}
+              batch={activeBatch}
+              unit={unit}
+              isCalibrating={isCalibrating}
+              discoveryDoseNumber={discoveryDoseNumber}
+              northStar={user?.north_star ?? 'clarity'}
+              referenceTime={referenceTime}
+            />
 
           {calibrationPrompt && (
             <Card className="border-ember/40 bg-elevated/70 p-4">

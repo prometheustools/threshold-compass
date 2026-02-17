@@ -7,6 +7,8 @@
 @layer base {
   body {
     @apply bg-base text-ivory font-sans antialiased;
+    background: linear-gradient(180deg, #0a0e1a 0%, #0d1220 100%);
+    min-height: 100vh;
   }
 
   * {
@@ -30,7 +32,7 @@
   }
 
   .text-label {
-    @apply font-mono text-xs tracking-widest uppercase text-bone;
+    @apply font-mono text-xs tracking-wider text-bone uppercase;
   }
 
   .touch-target {
@@ -39,6 +41,14 @@
 
   .h-safe-area-inset-bottom {
     height: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .glass {
+    @apply bg-surface/80 backdrop-blur-xl;
+  }
+  
+  .glow-amber {
+    box-shadow: 0 0 40px rgba(212, 168, 67, 0.15);
   }
 }
 
@@ -58,10 +68,44 @@
   }
 }
 
+@keyframes pulse-glow {
+  0%, 100% { 
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 800ms cubic-bezier(0.25, 0.1, 0.25, 1.0) forwards;
 }
 
 .animate-fade-in-up {
   animation: fadeInUp 800ms cubic-bezier(0.25, 0.1, 0.25, 1.0) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a3347;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4357;
 }

@@ -10,6 +10,8 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import LoadingState from '@/components/ui/LoadingState'
 import Modal from '@/components/ui/Modal'
+import CompassRoseSelector from '@/components/settings/CompassRoseSelector'
+import GuidanceSpectrum from '@/components/settings/GuidanceSpectrum'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -36,19 +38,7 @@ const defaultNotifications: NotificationPreferences = {
   end_of_day_reflection: false,
 }
 
-const northStarOptions: Array<{ value: NorthStar; label: string; description: string }> = [
-  { value: 'clarity', label: 'Clarity', description: 'Focus and cognitive precision' },
-  { value: 'connection', label: 'Connection', description: 'Relational openness and empathy' },
-  { value: 'creativity', label: 'Creativity', description: 'Divergent thinking and flow' },
-  { value: 'calm', label: 'Calm', description: 'Regulation and emotional steadiness' },
-  { value: 'exploration', label: 'Exploration', description: 'Discovery and experimentation' },
-]
 
-const guidanceOptions: Array<{ value: GuidanceLevel; label: string; description: string }> = [
-  { value: 'minimal', label: 'Minimal', description: 'Low-touch UI and fewer prompts' },
-  { value: 'guided', label: 'Guided', description: 'Balanced support and reminders' },
-  { value: 'experienced', label: 'Experienced', description: 'Lean defaults for established practice' },
-]
 
 const notificationItems: Array<{ key: NotificationKey; label: string; description: string }> = [
   {
@@ -428,52 +418,25 @@ export default function SettingsPage() {
         </Card>
 
         <Card padding="lg">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <p className="font-mono text-xs tracking-widest uppercase text-bone">North Star</p>
             <StatusBadge status={northStarStatus} />
           </div>
-          <p className="mt-2 text-sm text-bone">Choose the direction that anchors your protocol.</p>
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {northStarOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => handleNorthStarChange(option.value)}
-                className={`rounded-button border px-3 py-3 text-left transition-settle ${
-                  northStar === option.value
-                    ? 'border-orange bg-orange/15 text-ivory'
-                    : 'border-ember/20 bg-elevated text-bone hover:border-ember/50'
-                }`}
-              >
-                <p className="font-mono text-xs uppercase tracking-widest">{option.label}</p>
-                <p className="mt-1 text-xs">{option.description}</p>
-              </button>
-            ))}
-          </div>
+          <CompassRoseSelector
+            value={northStar}
+            onChange={handleNorthStarChange}
+          />
         </Card>
 
         <Card padding="lg">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <p className="font-mono text-xs tracking-widest uppercase text-bone">Guidance Level</p>
             <StatusBadge status={guidanceStatus} />
           </div>
-          <div className="mt-3 space-y-2">
-            {guidanceOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => handleGuidanceChange(option.value)}
-                className={`w-full rounded-button border px-3 py-3 text-left transition-settle ${
-                  guidanceLevel === option.value
-                    ? 'border-orange bg-orange/15 text-ivory'
-                    : 'border-ember/20 bg-elevated text-bone hover:border-ember/50'
-                }`}
-              >
-                <p className="font-mono text-xs uppercase tracking-widest">{option.label}</p>
-                <p className="mt-1 text-xs">{option.description}</p>
-              </button>
-            ))}
-          </div>
+          <GuidanceSpectrum
+            value={guidanceLevel}
+            onChange={handleGuidanceChange}
+          />
         </Card>
 
         <Card padding="lg">
@@ -482,30 +445,23 @@ export default function SettingsPage() {
             <StatusBadge status={sensitivityStatus} />
           </div>
           <p className="mt-2 text-sm text-bone">Calibrates conservative recommendations. Current: {sensitivity}/5</p>
-          <input
-            type="range"
-            min={1}
-            max={5}
-            step={1}
-            value={sensitivity}
-            onChange={(event) => handleSensitivityChange(Number(event.target.value))}
-            className="mt-3 w-full accent-orange"
-            aria-label="Sensitivity level"
-            aria-valuetext={`Sensitivity level ${sensitivity} of 5`}
-          />
-          <div className="mt-3 grid grid-cols-5 gap-2">
-            {[1, 2, 3, 4, 5].map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => handleSensitivityChange(value)}
-                className={`rounded-button px-2 py-2 text-sm font-mono transition-settle ${
-                  sensitivity === value ? 'bg-orange text-base' : 'bg-elevated text-bone'
-                }`}
-              >
-                {value}
-              </button>
-            ))}
+          <div className="mt-4">
+            <div className="flex items-center justify-between gap-2">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => handleSensitivityChange(value)}
+                  className={`flex-1 h-12 rounded-xl font-mono text-lg font-bold transition-all ${
+                    sensitivity === value
+                      ? 'bg-amber text-surface'
+                      : 'bg-surface border border-ember text-bone hover:border-amber'
+                  }`}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
           </div>
         </Card>
 

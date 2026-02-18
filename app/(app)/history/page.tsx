@@ -11,6 +11,7 @@ import Card from '@/components/ui/Card'
 import LoadingState from '@/components/ui/LoadingState'
 import CalendarView from '@/components/history/CalendarView'
 import TimelineStrip from '@/components/history/TimelineStrip'
+import CarryoverDecayChart from '@/components/history/CarryoverDecayChart'
 
 type ViewMode = 'list' | 'calendar'
 
@@ -306,6 +307,14 @@ export default function HistoryPage() {
           <>
             {/* Timeline Strip */}
             <TimelineStrip doses={doses} days={30} />
+
+            {/* Carryover Decay Chart */}
+            <CarryoverDecayChart
+              doses={doses}
+              days={14}
+              halfLifeHours={288}
+              referenceTime={Date.now()}
+            />
 
             {/* View Toggle */}
             <div className="flex items-center justify-between">

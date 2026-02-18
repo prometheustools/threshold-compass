@@ -91,6 +91,12 @@
   animation: pulse-glow 4s ease-in-out infinite;
 }
 
+/* v2.0 Redesign - Navy & Amber Theme */
+.new-theme-active {
+  --bg-base: #0a0e1a;
+  --accent-amber: #d4a843;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

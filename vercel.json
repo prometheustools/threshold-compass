@@ -1,9 +1,15 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "cacheDirectories": [".next/cache"],
-  "env": {
-    "NEXT_FORCE_EDGE_IMAGES": "true"
-  }
+  "headers": [
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "cleanUrls": true
 }

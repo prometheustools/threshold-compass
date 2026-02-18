@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "rm -rf .next && next build --webpack",
     "start": "next start",
     "lint": "eslint app components lib store types proxy.ts --ext .ts,.tsx,.js,.jsx --max-warnings=0",
     "schema:check": "bash ./scripts/ensure-supabase-schema.sh --check-only",

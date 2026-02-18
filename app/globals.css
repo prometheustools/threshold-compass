@@ -9,7 +9,7 @@
     @apply bg-base text-ivory font-sans antialiased;
     background: linear-gradient(180deg, #0a0e1a 0%, #0d1220 100%);
     min-height: 100vh;
-    /* Force redeploy - v2 */
+  }
 
   * {
     @apply border-ember/30;

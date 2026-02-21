@@ -21,7 +21,7 @@
     "posthog-js": "^1.347.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-hook-form": "^7.53.0",
+    "react-hook-form": "^7.71.2",
     "zod": "^3.23.0",
     "zustand": "^5.0.0"
   },
